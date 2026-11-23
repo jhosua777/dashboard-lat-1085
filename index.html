@@ -159,6 +159,8 @@
     font-size:10px;font-weight:700;padding:2px 8px;min-height:1.7rem;line-height:1;
   }
   thead tr.prow th .solo:hover{border-color:var(--accent);color:var(--accent-ink)}
+  thead tr.prow th .solo.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  thead tr.prow th .solo.on:hover{color:#fff}
   @media (prefers-color-scheme: dark){thead tr.prow th .solo{background:#122334;color:#c9d8e8;border-color:#33506f}}
   th.corner,td.torre{
     position:sticky;left:0;z-index:22;width:118px;min-width:118px;max-width:118px;
@@ -591,9 +593,10 @@ function renderMatriz(){
   head+='</tr><tr class="prow"><th class="corner">TORRE</th>';
   cols.forEach(i=>{
     const partes=splitCodigo(DATA.matriz.codigos[i]);
+    const esSolo = cols.length===1;
     head+='<th><span class="pc1">'+esc(partes[0])+'</span><span class="pc2">'+esc(partes[1])+'</span>'+
       '<span class="pn">'+esc(DATA.matriz.protocolos[i])+'</span>'+
-      '<button type="button" class="solo" data-solo="'+i+'">ver solo esta</button></th>';
+      '<button type="button" class="solo'+(esSolo?" on":"")+'" data-solo="'+i+'">'+(esSolo?"ver todas":"ver solo esta")+'</button></th>';
   });
   head+="</tr></thead>";
   let body="<tbody>";
@@ -614,7 +617,14 @@ function renderMatriz(){
     "Mostrando <b>"+filas.length+"</b> de 409 torres · <b>"+cols.length+"</b> de 35 protocolos";
   table.querySelectorAll("button[data-solo]").forEach(b=>b.addEventListener("click",ev=>{
     ev.stopPropagation();
-    selProtos.clear(); selProtos.add(+b.dataset.solo); syncProtoPanel(); renderMatriz();
+    const idx=+b.dataset.solo;
+    if(selProtos.size===1 && selProtos.has(idx)){
+      /* ya está sola: volver a mostrar todas las columnas (todas las torres) */
+      DATA.matriz.codigos.forEach((_,j)=>selProtos.add(j));
+    } else {
+      selProtos.clear(); selProtos.add(idx);
+    }
+    syncProtoPanel(); renderMatriz();
   }));
   table.querySelectorAll("td.torre").forEach(td=>td.addEventListener("click",()=>abrirFicha(td.dataset.torre)));
   table.querySelectorAll("td.cell").forEach(td=>td.addEventListener("click",()=>abrirFicha(td.dataset.torre, +td.dataset.proto)));
@@ -763,7 +773,7 @@ function descargarResumen(){
   const faltan = aplicables - aprobados;
   const pct = aprobados/aplicables*100;
   const pctTxt = pct.toFixed(1).replace(".",",");
-  const estados = [["Aprobado","#00B050"],["RC","#BDD7EE"],["Pendiente ejecución","#00B0F0"],["Ejecución","#FF0000"],["Observado","#FFC000"],["N/A","#EDEDED"],["Sin registro","#EDEDED"]];
+  const estados = [["Aprobado","#00B050"],["RC","#BDD7EE"],["Pendiente ejecución","#00B0F0"],["Ejecución","#FF0000"],["Observado","#FFC000"],["N/A","#FFFFFF"],["Sin registro","#FFFFFF"]];
   const valorEst = k => k==="Sin registro" ? (g["None"]||0) : (g[k]||0);
   const filasEstado = estados.map(([n,c])=>
     '<tr><td><span class="sw" style="background:'+c+'"></span>'+n+'</td><td class="num">'+fmt(valorEst(n))+'</td></tr>').join("");

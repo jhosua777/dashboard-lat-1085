@@ -113,6 +113,11 @@
   .btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
   .btn.primary:hover{background:var(--navy-2)}
   .btn.gold{background:#f3c969;border-color:#d9a92f;color:#231a02}
+  .btn-dl{background:#f3c969;border-color:#d9a92f;color:#231a02}
+  .btn-dl:hover{background:#f7d67e;border-color:#b97f10}
+  .side-dl{margin:10px 18px 2px;width:calc(100% - 36px);justify-content:center}
+  .view-head-flex{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-start;justify-content:space-between}
+  .view-head-flex .btn{flex:0 0 auto;margin-top:2px}
   .counter{margin-left:auto;font-size:13.5px;color:var(--muted);align-self:center}
   .counter b{color:var(--ink)}
 
@@ -271,6 +276,7 @@
       <div class="sub">Matriz de protocolos por torre</div>
     </div>
     <div class="corte">Corte de datos<br><b>23 de noviembre de 2026</b></div>
+    <button class="btn btn-dl side-dl" type="button" data-dl-resumen><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar resumen rápido</button>
     <nav class="main" id="mainNav" aria-label="Vistas">
       <button data-view="inicio" class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Inicio</button>
       <button data-view="matriz"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>Matriz</button>
@@ -285,7 +291,7 @@
   <main class="content">
     <!-- INICIO -->
     <section class="view active" id="view-inicio">
-      <div class="view-head"><h2>Resumen general</h2><p>Avance de protocolos de la línea al corte del 23-11-2026.</p></div>
+      <div class="view-head view-head-flex"><div><h2>Resumen general</h2><p>Avance de protocolos de la línea al corte del 23-11-2026.</p></div><button class="btn btn-dl" type="button" data-dl-resumen><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar resumen rápido</button></div>
       <div class="grid kpis" id="kpiRow"></div>
       <div class="grid cols-2" style="margin-top:14px">
         <div class="card"><h3>Avance por etapa</h3><div id="etapasBox"></div></div>
@@ -749,7 +755,92 @@ function renderActividades(){
 document.getElementById("actReset").addEventListener("click",()=>{ actHechas.clear(); renderActividades(); });
 renderActividades();
 
-/* =================== FICHA DE TORRE =================== */
+/* =================== RESUMEN RÁPIDO (descarga) =================== */
+function descargarResumen(){
+  const g = DATA.matriz.global;
+  const aplicables = 14315 - g["N/A"];
+  const aprobados = g["Aprobado"];
+  const faltan = aplicables - aprobados;
+  const pct = aprobados/aplicables*100;
+  const pctTxt = pct.toFixed(1).replace(".",",");
+  const estados = [["Aprobado","#00B050"],["RC","#BDD7EE"],["Pendiente ejecución","#00B0F0"],["Ejecución","#FF0000"],["Observado","#FFC000"],["N/A","#EDEDED"],["Sin registro","#EDEDED"]];
+  const valorEst = k => k==="Sin registro" ? (g["None"]||0) : (g[k]||0);
+  const filasEstado = estados.map(([n,c])=>
+    '<tr><td><span class="sw" style="background:'+c+'"></span>'+n+'</td><td class="num">'+fmt(valorEst(n))+'</td></tr>').join("");
+  const filasEtapa = DATA.datos.etapas.map(e=>
+    '<tr><td>'+esc(e.etapa)+'</td><td class="num">'+fmt(e.aprobados)+'</td><td class="num">'+fmt(e.aplicables)+'</td><td class="num">'+e.pct+'%</td><td class="num">'+fmt(e.faltan)+'</td></tr>').join("");
+  const ml = DATA.matriz.montaje_listas;
+  const totM = ml["Montada"].length + ml["En Proceso"].length + ml["No Montada"].length;
+  const segM = (n,color)=>'<div style="width:'+(n/totM*100)+'%;background:'+color+'">'+n+'</div>';
+  const conteoT = {};
+  DATA.datos.torres.forEach(t=>{ conteoT[t.estado]=(conteoT[t.estado]||0)+1; });
+  const filasTorres = ["Completa","En curso","Sin iniciar"].map(e=>
+    '<tr><td>'+e+'</td><td class="num">'+(conteoT[e]||0)+' torres</td></tr>').join("");
+  const zonas = {}; const ordenZ = [];
+  DATA.actividades.forEach(a=>{ const z=a.zona||"Otras zonas"; if(!zonas[z]){ zonas[z]=0; ordenZ.push(z); } zonas[z]++; });
+  const filasZonas = ordenZ.map(z=>'<tr><td>'+esc(z)+'</td><td class="num">'+zonas[z]+'</td></tr>').join("");
+  const doc =
+'<!doctype html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n' +
+'<title>Resumen rápido — LAT 1085 · Corte 23-11-2026</title>\n<style>\n' +
+'body{font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;margin:0;background:#edf0f5;color:#16283c;font-size:15px;line-height:1.45}\n' +
+'.page{max-width:860px;margin:0 auto;padding:26px 18px 34px}\n' +
+'header{background:#0a2540;color:#fff;border-radius:12px;padding:20px 24px}\n' +
+'header .proj{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8fb0d1;font-weight:600}\n' +
+'header h1{margin:4px 0 2px;font-size:24px;line-height:1.15}\n' +
+'header .sub{color:#a9c2da;font-size:13.5px}\n' +
+'.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}\n' +
+'.kpi{background:#fff;border:1px solid #e6ebf1;border-radius:12px;padding:14px 16px}\n' +
+'.kpi .lbl{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#5b6b7e}\n' +
+'.kpi .num{font-size:28px;font-weight:750;line-height:1.1;margin:3px 0 1px}\n' +
+'.kpi .hint{font-size:12px;color:#5b6b7e}\n' +
+'.bar{height:9px;border-radius:99px;background:#eef2f7;overflow:hidden;margin-top:8px}\n' +
+'.bar>i{display:block;height:100%;background:#2e7cd6}\n' +
+'.card{background:#fff;border:1px solid #e6ebf1;border-radius:12px;padding:16px 18px;margin:0 0 14px}\n' +
+'.card h2{font-size:15px;margin:0 0 10px}\n' +
+'table{border-collapse:collapse;width:100%;font-size:13.5px}\n' +
+'th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:#5b6b7e;padding:6px 8px;border-bottom:2px solid #d8dee7}\n' +
+'th.num,td.num{text-align:right;font-variant-numeric:tabular-nums}\n' +
+'td{padding:6px 8px;border-bottom:1px solid #e6ebf1}\n' +
+'tr:last-child td{border-bottom:0}\n' +
+'.sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid rgba(16,36,62,.25);margin-right:8px;vertical-align:-1px}\n' +
+'.stack{display:flex;height:24px;border-radius:7px;overflow:hidden;border:1px solid #d8dee7;margin-bottom:10px}\n' +
+'.stack>div{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#101418;min-width:0;overflow:hidden;white-space:nowrap}\n' +
+'.leg{font-size:13px;color:#5b6b7e}\n' +
+'.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}\n' +
+'.cols .card{margin:0}\n' +
+'.wrap-cols{margin-bottom:14px}\n' +
+'footer{color:#5b6b7e;font-size:12.5px;text-align:center;margin-top:8px}\n' +
+'@media(max-width:640px){.kpis{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}}\n' +
+'@media print{body{background:#fff}.page{padding:0}}\n' +
+'</style>\n</head>\n<body>\n<div class="page">\n' +
+'<header><div class="proj">Proyecto 1085 · Línea de Alta Tensión</div><h1>Resumen rápido — Dashboard LAT 1085</h1><div class="sub">Corte de datos: 23 de noviembre de 2026 · 409 torres · 35 protocolos por torre</div></header>\n' +
+'<div class="kpis">' +
+'<div class="kpi"><div class="lbl">Avance general</div><div class="num">'+pctTxt+'%</div><div class="hint">'+fmt(aprobados)+' de '+fmt(aplicables)+' protocolos aplicables</div><div class="bar"><i style="width:'+pct+'%"></i></div></div>' +
+'<div class="kpi"><div class="lbl">Protocolos aprobados</div><div class="num">'+fmt(aprobados)+'</div><div class="hint">Estado «Aprobado» en la matriz</div></div>' +
+'<div class="kpi"><div class="lbl">Por ejecutar / resolver</div><div class="num">'+fmt(faltan)+'</div><div class="hint">Aplicables aún no aprobados</div></div>' +
+'<div class="kpi"><div class="lbl">Torres del proyecto</div><div class="num">409</div><div class="hint">35 protocolos por torre</div></div>' +
+'</div>\n' +
+'<div class="card"><h2>Conteo por estado — '+fmt(14315)+' celdas de la matriz</h2><table><tbody>'+filasEstado+'</tbody></table></div>\n' +
+'<div class="card"><h2>Avance por etapa</h2><table><thead><tr><th>Etapa</th><th class="num">Aprobados</th><th class="num">Aplicables</th><th class="num">Avance</th><th class="num">Faltan</th></tr></thead><tbody>'+filasEtapa+'</tbody></table></div>\n' +
+'<div class="cols wrap-cols">' +
+'<div class="card"><h2>Montaje de estructuras</h2><div class="stack">'+segM(ml["Montada"].length,"#00B050")+segM(ml["En Proceso"].length,"#FFC000")+segM(ml["No Montada"].length,"#BDD7EE")+'</div>' +
+'<div class="leg"><span class="sw" style="background:#00B050"></span>Montadas · <b>'+ml["Montada"].length+'</b><br><span class="sw" style="background:#FFC000"></span>En proceso · <b>'+ml["En Proceso"].length+'</b><br><span class="sw" style="background:#BDD7EE"></span>No montadas · <b>'+ml["No Montada"].length+'</b></div></div>' +
+'<div class="card"><h2>Torres por estado general</h2><table><tbody>'+filasTorres+'</tbody></table></div>' +
+'</div>\n' +
+'<div class="card"><h2>Actividades del día — 23-11-2026</h2><p style="margin:0 0 8px;font-size:13.5px">'+DATA.actividades.length+' actividades programadas · '+actHechas.size+' marcadas como realizadas en el panel.</p><table><tbody>'+filasZonas+'</tbody></table></div>\n' +
+'<footer>Elaborado por Jhosua Herrera · Fuente: Matriz LAT 1085</footer>\n' +
+'</div>\n</body>\n</html>';
+  const blob = new Blob([doc], {type:"text/html;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "resumen-rapido-lat-1085-23-11-2026.html";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+document.querySelectorAll("[data-dl-resumen]").forEach(b=>b.addEventListener("click", descargarResumen));
 let drawer=null, scrim=null;
 function ensureDrawer(){
   if(drawer) return;

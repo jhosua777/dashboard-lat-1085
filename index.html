@@ -618,10 +618,14 @@ function renderMatriz(){
   table.querySelectorAll("button[data-solo]").forEach(b=>b.addEventListener("click",ev=>{
     ev.stopPropagation();
     const idx=+b.dataset.solo;
+    /* En ambos sentidos se limpian los filtros de filas: el resultado
+       siempre muestra las 409 torres. */
+    fBuscar.value=""; fMontaje.value=""; fEstadoGral.value=""; fEstadoProto.value="";
     if(selProtos.size===1 && selProtos.has(idx)){
-      /* ya está sola: volver a mostrar todas las columnas (todas las torres) */
+      /* ya está sola: volver a mostrar todas las columnas y todas las torres */
       DATA.matriz.codigos.forEach((_,j)=>selProtos.add(j));
     } else {
+      /* ver solo esta columna, con la fila completa de cada torre */
       selProtos.clear(); selProtos.add(idx);
     }
     syncProtoPanel(); renderMatriz();
@@ -678,7 +682,9 @@ renderTorres();
   tb.innerHTML=html;
   tb.querySelectorAll("tr[data-proto]").forEach(tr=>tr.addEventListener("click",()=>{
     selProtos.clear(); selProtos.add(+tr.dataset.proto);
-    fEstadoProto.value=""; syncProtoPanel(); renderMatriz(); showView("matriz");
+    /* igual que «ver solo esta»: se ven las 409 torres, sin filtros de filas */
+    fBuscar.value=""; fMontaje.value=""; fEstadoGral.value=""; fEstadoProto.value="";
+    syncProtoPanel(); renderMatriz(); showView("matriz");
   }));
 })();
 

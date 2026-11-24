@@ -184,6 +184,38 @@
   .cN:hover,.cS:hover{box-shadow:inset 0 0 0 2px rgba(10,37,64,.55)}
   .empty-note{padding:34px;text-align:center;color:var(--muted)}
 
+  /* ---------- Edición de estados ---------- */
+  .btn:disabled{opacity:.45;cursor:default}
+  .btn-edit-on{background:var(--navy)!important;border-color:var(--navy)!important;color:#fff!important}
+  .editbar{background:var(--card);border:1px solid var(--accent);border-radius:12px;box-shadow:var(--shadow);padding:12px 16px;margin-bottom:12px}
+  .editbar .eb-title{font-weight:700;font-size:14.5px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+  .editbar .eb-title .n{color:var(--accent-ink);font-size:13px}
+  .editbar .eb-hint{font-size:12.5px;color:var(--muted);margin-top:2px;max-width:78ch}
+  .palette{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0}
+  .stbtn{display:inline-flex;align-items:center;gap:6px;border:2px solid rgba(16,36,62,.28);border-radius:8px;
+    padding:6px 11px;font-size:13px;font-weight:700;color:#101418;min-height:2.4rem;background:#fff}
+  .stbtn.sel{border-color:var(--navy);box-shadow:0 0 0 2px var(--card),0 0 0 4.5px var(--navy)}
+  @media (prefers-color-scheme: dark){.stbtn.sel{border-color:#fff;box-shadow:0 0 0 2px var(--card),0 0 0 4.5px #fff}}
+  .stbtn.sel::after{content:"✓";font-weight:800}
+  .eb-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .eb-actions .sp{flex:1}
+  .cambios-list{margin-top:11px;border-top:1px solid var(--line-soft);padding-top:9px;max-height:172px;overflow:auto}
+  .cambios-list .cl-t{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+  .cambio{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line-soft)}
+  .cambio:last-child{border-bottom:0}
+  .cambio .ct{font-weight:750}
+  .cambio .cp{color:var(--muted);font-size:12px}
+  .cambio .arrow{color:var(--muted)}
+  .cambio .chip-est{min-width:0;font-size:10.5px;padding:2px 7px}
+  .matrix-wrap.editing td.cell{cursor:cell}
+  .matrix-wrap.editing td.cell:hover{box-shadow:inset 0 0 0 3px var(--navy)}
+  td.cell.mod{box-shadow:inset 0 -3px 0 var(--accent),inset 0 0 0 1px rgba(185,127,16,.5)}
+  td.cell.mod:hover{box-shadow:inset 0 -3px 0 var(--accent),inset 0 0 0 2px rgba(10,37,64,.55)}
+  .proto-item{flex-wrap:wrap}
+  .estado-sel{margin-left:auto;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink);
+    font:inherit;font-size:12.5px;font-weight:600;padding:4px 6px;max-width:172px;min-height:2.25rem}
+  @media (max-width:480px){.estado-sel{margin-left:0;width:100%;max-width:none}}
+
   /* ---------- Generic tables ---------- */
   .tbl-wrap{background:var(--card);border:1px solid var(--line-soft);border-radius:12px;box-shadow:var(--shadow);overflow:auto}
   table.data{border-collapse:collapse;width:100%;font-size:13.5px}
@@ -309,7 +341,7 @@
 
     <!-- MATRIZ -->
     <section class="view" id="view-matriz">
-      <div class="view-head"><h2>Matriz LAT</h2><p>409 torres × 35 protocolos. Toque una torre o una celda para ver su ficha.</p></div>
+      <div class="view-head view-head-flex"><div><h2>Matriz LAT</h2><p>409 torres × 35 protocolos. Toque una torre o una celda para ver su ficha, o active «Actualizar estados» para cambiar el estado de las celdas aquí mismo.</p></div><button class="btn btn-dl" type="button" id="btnEditar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg><span id="btnEditarTxt">Actualizar estados</span></button></div>
       <div class="filters">
         <div class="row">
           <div class="field"><label for="fBuscar">Buscar torre</label><input type="search" id="fBuscar" placeholder="Ej.: T188N"></div>
@@ -337,6 +369,18 @@
           </div>
           <div class="proto-groups" id="protoGroups"></div>
         </div>
+      </div>
+      <div class="editbar hidden" id="editBar">
+        <div class="eb-title">Modo edición <span class="n" id="ebCount"></span></div>
+        <div class="eb-hint">Elija el estado y toque las celdas de la matriz para aplicarlo; también puede cambiarlo desde la ficha de cada torre. Los conteos, avances y el resumen se recalculan al momento. Los cambios quedan guardados en este navegador: al recargar la página siguen aplicados y las celdas editadas quedan marcadas. Descargue el respaldo para enviárselos a Muse y consolidarlos en la matriz oficial, o restablezca al corte para volver a los estados oficiales.</div>
+        <div class="palette" id="palette" role="group" aria-label="Estado a aplicar"></div>
+        <div class="eb-actions">
+          <button class="btn" type="button" id="btnDeshacer">Deshacer último cambio</button>
+          <button class="btn" type="button" id="btnRestablecer">Restablecer al corte</button>
+          <span class="sp"></span>
+          <button class="btn btn-dl" type="button" id="btnDescargarCambios"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar cambios (JSON)</button>
+        </div>
+        <div class="cambios-list hidden" id="cambiosList"></div>
       </div>
       <div class="legend" id="leyendaMatriz" style="margin:0 2px 10px"></div>
       <div class="matrix-wrap"><div class="matrix-scroll" id="matrixScroll">
@@ -450,7 +494,7 @@ function showView(name){
 navBtns.forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
 
 /* =================== INICIO =================== */
-(function inicio(){
+function renderInicio(){
   const g = DATA.matriz.global;
   const aplicables = 14315 - g["N/A"];
   const aprobados = g["Aprobado"];
@@ -496,7 +540,8 @@ navBtns.forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
       '<div class="bar" style="margin:0"><i style="width:'+((conteo[e]||0)/409*100)+'%"></i></div>'+
       '<div class="vl"><b>'+(conteo[e]||0)+'</b> torres</div></div>'
     ).join("");
-})();
+}
+renderInicio();
 
 /* =================== MATRIZ =================== */
 const selProtos = new Set(DATA.matriz.codigos.map((_,i)=>i));
@@ -604,7 +649,7 @@ function renderMatriz(){
     body+='<tr><td class="torre" data-torre="'+esc(f.torre)+'"><div class="tn">'+esc(f.torre)+'</div><div class="tm">'+dotMontaje(f.montaje)+'</div></td>';
     cols.forEach(i=>{
       const ch=f.estados[i], e=EST[ch];
-      body+='<td class="cell '+e.clase+'" data-torre="'+esc(f.torre)+'" data-proto="'+i+'" title="'+esc(f.torre)+" · "+esc(DATA.matriz.codigos[i])+" "+esc(DATA.matriz.protocolos[i])+" — "+e.nombre+'">'+(ch==="."?"":e.nombre)+'</td>';
+      body+='<td class="cell '+e.clase+(f.estados[i]!==estadosOriginales[f.torre][i]?" mod":"")+'" data-torre="'+esc(f.torre)+'" data-proto="'+i+'" title="'+esc(f.torre)+" · "+esc(DATA.matriz.codigos[i])+" "+esc(DATA.matriz.protocolos[i])+" — "+e.nombre+'">'+(ch==="."?"":e.nombre)+'</td>';
     });
     body+="</tr>";
   });
@@ -631,7 +676,9 @@ function renderMatriz(){
     syncProtoPanel(); renderMatriz();
   }));
   table.querySelectorAll("td.torre").forEach(td=>td.addEventListener("click",()=>abrirFicha(td.dataset.torre)));
-  table.querySelectorAll("td.cell").forEach(td=>td.addEventListener("click",()=>abrirFicha(td.dataset.torre, +td.dataset.proto)));
+  table.querySelectorAll("td.cell").forEach(td=>td.addEventListener("click",()=>{
+    if(modoEdicion) pintarCelda(td); else abrirFicha(td.dataset.torre, +td.dataset.proto);
+  }));
 }
 [fBuscar,fMontaje,fEstadoGral,fEstadoProto].forEach(el=>{
   el.addEventListener("input",renderMatriz); el.addEventListener("change",renderMatriz);
@@ -667,7 +714,7 @@ function renderTorres(){
 renderTorres();
 
 /* =================== PROTOCOLOS =================== */
-(function renderProtocolos(){
+function renderProtocolos(){
   const tb=document.querySelector("#protoTable tbody");
   let html="";
   DATA.matriz.codigos.forEach((cod,i)=>{
@@ -686,7 +733,8 @@ renderTorres();
     fBuscar.value=""; fMontaje.value=""; fEstadoGral.value=""; fEstadoProto.value="";
     syncProtoPanel(); renderMatriz(); showView("matriz");
   }));
-})();
+}
+renderProtocolos();
 
 /* =================== ÁNGULOS Y PLANOS =================== */
 const aBuscar=document.getElementById("aBuscar");
@@ -875,6 +923,7 @@ function chipEstado(ch){
 }
 function abrirFicha(torre, protoDestacado){
   const f=filasPorTorre[torre]; if(!f) return;
+  fichaTorre=torre;
   ensureDrawer();
   const info=torresInfo[torre];
   document.getElementById("dTitulo").textContent="Torre "+torre;
@@ -885,7 +934,9 @@ function abrirFicha(torre, protoDestacado){
   html+='<div class="d-sec"><h4>Protocolos de la torre</h4><div class="proto-list">';
   DATA.matriz.codigos.forEach((cod,i)=>{
     const ch=f.estados[i];
-    html+='<div class="proto-item"'+(protoDestacado===i?' style="background:var(--chip);border-radius:8px;padding-left:6px;padding-right:6px"':"")+'><div class="pi-nm"><div class="a">'+esc(DATA.matriz.protocolos[i])+'</div><div class="b">'+esc(cod)+' · '+esc(ETAPAS[ETAPA_DE_COL[i]])+'</div></div>'+chipEstado(ch)+'</div>';
+    html+='<div class="proto-item"'+(protoDestacado===i?' style="background:var(--chip);border-radius:8px;padding-left:6px;padding-right:6px"':"")+'><div class="pi-nm"><div class="a">'+esc(DATA.matriz.protocolos[i])+'</div><div class="b">'+esc(cod)+' · '+esc(ETAPAS[ETAPA_DE_COL[i]])+'</div></div>'+chipEstado(ch)+
+      '<select class="estado-sel" data-torre="'+esc(torre)+'" data-proto="'+i+'" aria-label="Cambiar estado de '+esc(DATA.matriz.protocolos[i])+' en la torre '+esc(torre)+'">'+
+      ORDEN_EST.map(k=>'<option value="'+k+'"'+(k===ch?" selected":"")+'>'+EST[k].nombre+'</option>').join("")+'</select></div>';
   });
   html+="</div></div>";
   /* ángulos */
@@ -920,15 +971,213 @@ function abrirFicha(torre, protoDestacado){
       '</dl></div>';
   }
   document.getElementById("dBody").innerHTML=html;
+  drawer.querySelectorAll("select.estado-sel").forEach(sel=>sel.addEventListener("change",()=>{
+    const t=sel.dataset.torre, idx=+sel.dataset.proto;
+    if(!aplicarEstado(t, idx, sel.value)) return;
+    renderMatriz();
+    const chip=sel.closest(".proto-item").querySelector(".chip-est");
+    if(chip){ const e=EST[sel.value]; chip.style.background=e.color; chip.textContent=e.nombre; }
+    const inf=torresInfo[t], fl=filasPorTorre[t];
+    document.getElementById("dSub").innerHTML=
+      esc(fl.tipo||"Sin tipo registrado")+" · "+esc(fl.montaje)+(inf? " · Avance "+inf.avance+"% · "+esc(inf.estado):"");
+  }));
   requestAnimationFrame(()=>{ drawer.classList.add("open"); scrim.classList.add("open"); });
 }
 function cerrarFicha(){
   if(!drawer) return;
+  fichaTorre=null;
   const d=drawer, s=scrim; drawer=null; scrim=null;
   d.classList.remove("open"); s.classList.remove("open");
   setTimeout(()=>{ d.remove(); s.remove(); }, 260);
 }
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") cerrarFicha(); });
+
+/* =================== EDICIÓN DE ESTADOS =================== */
+/* Los cambios se guardan en el navegador (localStorage): al recargar la
+   página siguen aplicados y las celdas quedan marcadas como editadas.
+   El respaldo en JSON permite consolidarlos después en la matriz oficial. */
+const estadosOriginales = {};
+DATA.matriz.filas.forEach(f=>{ estadosOriginales[f.torre]=f.estados; });
+const cambios = []; /* {torre, proto, antes, despues} */
+let modoEdicion=false, estadoSel="A", fichaTorre=null;
+
+/* ---------- Persistencia en el navegador ---------- */
+const CLAVE_CAMBIOS="lat1085-cambios-v1";
+const BASE_CORTE="23-11-2026";
+function guardarCambios(){
+  try{
+    if(cambios.length){
+      localStorage.setItem(CLAVE_CAMBIOS, JSON.stringify({base:BASE_CORTE, guardado:new Date().toISOString(), cambios:cambios}));
+    } else {
+      localStorage.removeItem(CLAVE_CAMBIOS);
+    }
+  }catch(e){ /* sin almacenamiento disponible: los cambios quedan solo en la sesión */ }
+}
+function cargarCambiosGuardados(){
+  let datos=null;
+  try{ datos=JSON.parse(localStorage.getItem(CLAVE_CAMBIOS)||"null"); }catch(e){}
+  if(!datos || datos.base!==BASE_CORTE || !Array.isArray(datos.cambios)) return;
+  datos.cambios.forEach(c=>{
+    const f=filasPorTorre[c.torre];
+    if(!f || typeof c.proto!=="number" || c.proto<0 || c.proto>34) return;
+    if(!EST[c.antes] || !EST[c.despues]) return;
+    if(f.estados[c.proto]!==c.antes) return; /* no calza con el corte oficial: se omite */
+    f.estados=f.estados.substring(0,c.proto)+c.despues+f.estados.substring(c.proto+1);
+    cambios.push({torre:c.torre, proto:c.proto, antes:c.antes, despues:c.despues});
+  });
+  if(cambios.length){
+    recalcularDerivados();
+    renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI();
+  }
+}
+const NOMBRE_DE_CH = {A:"Aprobado", R:"RC", P:"Pendiente ejecución", E:"Ejecución", O:"Observado", N:"N/A", ".":"None"};
+
+function recalcularDerivados(){
+  const g={"Aprobado":0,"RC":0,"Pendiente ejecución":0,"Ejecución":0,"Observado":0,"N/A":0,"None":0};
+  const etAp=ETAPAS.map(()=>0), etAplic=ETAPAS.map(()=>0);
+  DATA.matriz.filas.forEach(f=>{
+    let a=0, n=0, prox=null;
+    for(let i=0;i<35;i++){
+      const ch=f.estados[i];
+      g[NOMBRE_DE_CH[ch]]++;
+      const ei=ETAPA_DE_COL[i];
+      if(ch==="A") etAp[ei]++;
+      if(ch!=="N") etAplic[ei]++;
+      if(ch==="A") a++;
+      if(ch==="N") n++;
+      if(prox===null && ch==="P") prox=DATA.matriz.protocolos[i];
+    }
+    const aplic=35-n, faltan=aplic-a, info=torresInfo[f.torre];
+    if(info){
+      info.avance = aplic? Math.round(a/aplic*100) : 0;
+      info.faltan = faltan;
+      info.estado = faltan===0? "Completa" : (a===0? "Sin iniciar" : "En curso");
+      info.proximo = prox;
+    }
+  });
+  DATA.matriz.global=g;
+  DATA.datos.etapas.forEach((e,ei)=>{
+    e.aprobados=etAp[ei]; e.aplicables=etAplic[ei];
+    e.faltan=etAplic[ei]-etAp[ei];
+    e.pct= etAplic[ei]? Math.round(etAp[ei]/etAplic[ei]*100) : 0;
+  });
+}
+
+function actualizarCambiosUI(){
+  if(!modoEdicion) document.getElementById("btnEditarTxt").textContent =
+    "Actualizar estados"+(cambios.length? " · "+cambios.length+" guardado"+(cambios.length===1?"":"s") : "");
+  document.getElementById("ebCount").textContent =
+    cambios.length? "· "+cambios.length+" cambio"+(cambios.length===1?"":"s")+" guardado"+(cambios.length===1?"":"s")+" en este navegador" : "";
+  document.getElementById("btnDeshacer").disabled = !cambios.length;
+  document.getElementById("btnRestablecer").disabled = !cambios.length;
+  document.getElementById("btnDescargarCambios").disabled = !cambios.length;
+  const box=document.getElementById("cambiosList");
+  if(!cambios.length){ box.classList.add("hidden"); box.innerHTML=""; return; }
+  box.classList.remove("hidden");
+  box.innerHTML='<div class="cl-t">Cambios guardados en este navegador'+(cambios.length>60?' (últimos 60 de '+cambios.length+')':'')+'</div>'+
+    cambios.slice(-60).reverse().map(c=>
+      '<div class="cambio"><span class="ct">'+esc(c.torre)+'</span>'+
+      '<span class="cp">'+esc(DATA.matriz.codigos[c.proto])+' · '+esc(DATA.matriz.protocolos[c.proto])+'</span>'+
+      chipEstado(c.antes)+'<span class="arrow">→</span>'+chipEstado(c.despues)+'</div>'
+    ).join("");
+}
+
+function aplicarEstado(torre, idx, nuevo){
+  const f=filasPorTorre[torre]; if(!f) return false;
+  const antes=f.estados[idx]; if(antes===nuevo) return false;
+  f.estados=f.estados.substring(0,idx)+nuevo+f.estados.substring(idx+1);
+  cambios.push({torre:torre, proto:idx, antes:antes, despues:nuevo});
+  guardarCambios();
+  recalcularDerivados();
+  renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI();
+  document.getElementById("matrizCounter").innerHTML=
+    "Mostrando <b>"+filasFiltradas().length+"</b> de 409 torres · <b>"+selProtos.size+"</b> de 35 protocolos";
+  return true;
+}
+
+function pintarCelda(td){
+  const torre=td.dataset.torre, idx=+td.dataset.proto;
+  if(!aplicarEstado(torre, idx, estadoSel)) return;
+  /* se refresca solo la celda tocada, para no perder la posición en la matriz */
+  const ch=filasPorTorre[torre].estados[idx], e=EST[ch];
+  td.className="cell "+e.clase+" mod";
+  td.textContent=(ch==="."?"":e.nombre);
+  td.title=torre+" · "+DATA.matriz.codigos[idx]+" "+DATA.matriz.protocolos[idx]+" — "+e.nombre;
+}
+
+function refrescarFicha(){ if(drawer && fichaTorre) abrirFicha(fichaTorre); }
+
+function deshacerUltimo(){
+  const c=cambios.pop(); if(!c) return;
+  guardarCambios();
+  const f=filasPorTorre[c.torre];
+  f.estados=f.estados.substring(0,c.proto)+c.antes+f.estados.substring(c.proto+1);
+  recalcularDerivados();
+  renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI(); renderMatriz();
+  refrescarFicha();
+}
+function restablecerCorte(){
+  if(!cambios.length) return;
+  DATA.matriz.filas.forEach(f=>{ f.estados=estadosOriginales[f.torre]; });
+  cambios.length=0;
+  guardarCambios();
+  recalcularDerivados();
+  renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI(); renderMatriz();
+  refrescarFicha();
+}
+function descargarCambios(){
+  if(!cambios.length) return;
+  const payload={
+    tipo:"cambios-matriz-lat-1085",
+    base:"Corte 23-11-2026",
+    generado:new Date().toISOString(),
+    total:cambios.length,
+    cambios:cambios.map(c=>({
+      torre:c.torre,
+      codigo:DATA.matriz.codigos[c.proto],
+      protocolo:DATA.matriz.protocolos[c.proto],
+      estado_anterior:EST[c.antes].nombre,
+      estado_nuevo:EST[c.despues].nombre
+    }))
+  };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download="cambios-matriz-1085.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+const btnEditar=document.getElementById("btnEditar"), editBar=document.getElementById("editBar");
+function setModoEdicion(on){
+  modoEdicion=on;
+  editBar.classList.toggle("hidden", !on);
+  document.querySelector(".matrix-wrap").classList.toggle("editing", on);
+  btnEditar.classList.toggle("btn-edit-on", on);
+  document.getElementById("btnEditarTxt").textContent = on? "Terminar edición" : "Actualizar estados";
+  if(!on) actualizarCambiosUI();
+}
+btnEditar.addEventListener("click",()=>setModoEdicion(!modoEdicion));
+document.getElementById("btnDeshacer").addEventListener("click",deshacerUltimo);
+document.getElementById("btnRestablecer").addEventListener("click",restablecerCorte);
+document.getElementById("btnDescargarCambios").addEventListener("click",descargarCambios);
+(function buildPalette(){
+  const pal=document.getElementById("palette");
+  pal.innerHTML=ORDEN_EST.map(k=>{
+    const e=EST[k];
+    return '<button type="button" class="stbtn'+(k===estadoSel?" sel":"")+'" data-estado="'+k+'" style="background:'+e.color+'" aria-pressed="'+(k===estadoSel)+'">'+e.nombre+'</button>';
+  }).join("");
+  pal.querySelectorAll("button[data-estado]").forEach(b=>b.addEventListener("click",()=>{
+    estadoSel=b.dataset.estado;
+    pal.querySelectorAll("button[data-estado]").forEach(x=>{
+      const on=x===b; x.classList.toggle("sel",on); x.setAttribute("aria-pressed",on);
+    });
+  }));
+})();
+actualizarCambiosUI();
+
+/* restaurar los cambios guardados en este navegador (sobreviven la recarga) */
+cargarCambiosGuardados();
 
 /* render inicial de la matriz */
 renderMatriz();

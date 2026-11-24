@@ -217,6 +217,7 @@
   .guardar-estado.warn{color:var(--accent-ink)}
   .guardar-estado.ok{color:var(--ok)}
   @media (prefers-color-scheme: dark){.guardar-estado.ok{color:#7fd6a4}}
+  .nube-estado{margin-top:5px;font-size:12.5px;color:var(--muted)}
   .cambios-list{margin-top:11px;border-top:1px solid var(--line-soft);padding-top:9px;max-height:172px;overflow:auto}
   .cambios-list .cl-t{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
   .cambio{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line-soft)}
@@ -407,6 +408,7 @@
           <button class="btn btn-dl" type="button" id="btnDescargarCambios"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar cambios (JSON)</button>
         </div>
         <div class="guardar-estado ok" id="guardarEstado" role="status" aria-live="polite"></div>
+        <div class="nube-estado hidden" id="nubeEstado" role="status">sin conexión con el registro compartido</div>
         <div class="cambios-list hidden" id="cambiosList"></div>
       </div>
       <div class="legend" id="leyendaMatriz" style="margin:0 2px 10px"></div>
@@ -479,6 +481,8 @@
   </main>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script>
 "use strict";
 /* =================== DATOS (corte 23-11-2026) =================== */
@@ -1028,6 +1032,7 @@ DATA.matriz.filas.forEach(f=>{ estadosOriginales[f.torre]=f.estados; });
 const cambios = []; /* {torre, proto, antes, despues} */
 let modoEdicion=false, estadoSel="A", fichaTorre=null;
 let snapshotGuardado="[]", guardadoEn="";
+let ultimoGuardadoCompartido=false; /* true si el último guardado llegó al registro compartido */
 
 /* ---------- Persistencia en el navegador ---------- */
 const CLAVE_CAMBIOS="lat1085-cambios-v1";
@@ -1084,16 +1089,20 @@ function actualizarGuardarUI(){
     btn.disabled=true;
     txt.textContent= n? "Guardado ✓" : "Guardar cambios";
     est.className="guardar-estado ok";
-    est.textContent= n? ("✓ Guardado y actualizado"+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" guardado"+(n===1?"":"s")+" en este navegador.") : "Sin cambios por guardar: todo está al día con el corte.";
+    est.textContent= n? (ultimoGuardadoCompartido
+      ? ("✓ Guardado y compartido"+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" en el registro compartido: se ven en cualquier computador que abra la página.")
+      : ("✓ Guardado y actualizado"+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" guardado"+(n===1?"":"s")+" en este navegador.")) : "Sin cambios por guardar: todo está al día con el corte.";
   }
 }
 function guardarAhora(){
   guardarCambios();
   snapshotGuardado=JSON.stringify(cambios);
   guardadoEn=new Date().toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  ultimoGuardadoCompartido=false;
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); renderMatriz(); actualizarCambiosUI();
   refrescarFicha();
+  compartirCambios(); /* escribe además en el registro compartido (Firebase) */
 }
 function cargarCambiosGuardados(){
   let datos=null;
@@ -1222,6 +1231,7 @@ function restablecerCorte(){
   DATA.matriz.filas.forEach(f=>{ f.estados=estadosOriginales[f.torre]; });
   cambios.length=0;
   guardarBorrador();
+  limpiarNube(); /* también limpia el documento compartido */
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI(); renderMatriz();
   refrescarFicha();
@@ -1284,6 +1294,104 @@ actualizarProtocolosOK();
 cargarCambiosGuardados();
 /* y el borrador sin guardar, si quedó uno pendiente de «Guardar cambios» */
 cargarBorrador();
+
+/* =================== REGISTRO COMPARTIDO (Firebase Firestore) ===================
+   Los cambios guardados se escriben además en el documento compartido
+   lat1085/cambios, con el mismo payload que usa el respaldo local
+   (lat1085-cambios-v1), para que se vean en cualquier computador que abra
+   la página. La página escucha ese documento en tiempo real y se actualiza
+   sola cuando otra persona guarda. Si Firebase no responde, todo sigue
+   funcionando solo con el respaldo local y se muestra un aviso discreto. */
+const NUBE_CONFIG={
+  apiKey:"AIzaSyAhUKGwlx-1uoYPk4C6yHGlPvcAAl5PLG0",
+  authDomain:"dashboard-lat-1085.firebaseapp.com",
+  projectId:"dashboard-lat-1085",
+  storageBucket:"dashboard-lat-1085.firebasestorage.app",
+  messagingSenderId:"815990960610",
+  appId:"1:815990960610:web:17b263db696626922249bb"
+};
+let nubeRef=null;
+function setAvisoNube(sinConexion){
+  const el=document.getElementById("nubeEstado");
+  if(el) el.classList.toggle("hidden", !sinConexion);
+}
+function payloadNube(){
+  return {base:BASE_CORTE, guardado:new Date().toISOString(),
+    cambios:cambios.map(c=>({torre:c.torre, proto:c.proto, antes:c.antes, despues:c.despues}))};
+}
+function compartirCambios(){
+  if(!nubeRef){ setAvisoNube(true); return; }
+  nubeRef.set(payloadNube()).then(()=>{
+    ultimoGuardadoCompartido=true; setAvisoNube(false); actualizarGuardarUI();
+  }).catch(()=>{ ultimoGuardadoCompartido=false; setAvisoNube(true); actualizarGuardarUI(); });
+}
+function limpiarNube(){
+  ultimoGuardadoCompartido=false;
+  if(!nubeRef) return;
+  nubeRef.set({base:BASE_CORTE, guardado:new Date().toISOString(), cambios:[]})
+    .then(()=>setAvisoNube(false)).catch(()=>setAvisoNube(true));
+}
+function aplicarCambiosNube(datos){
+  DATA.matriz.filas.forEach(f=>{ f.estados=estadosOriginales[f.torre]; });
+  cambios.length=0;
+  datos.cambios.forEach(c=>{
+    const f=filasPorTorre[c.torre];
+    if(!f || typeof c.proto!=="number" || c.proto<0 || c.proto>34) return;
+    if(!EST[c.antes] || !EST[c.despues]) return;
+    if(f.estados[c.proto]!==c.antes) return; /* no calza con el corte oficial: se omite */
+    f.estados=f.estados.substring(0,c.proto)+c.despues+f.estados.substring(c.proto+1);
+    cambios.push({torre:c.torre, proto:c.proto, antes:c.antes, despues:c.despues});
+  });
+  snapshotGuardado=JSON.stringify(cambios);
+  ultimoGuardadoCompartido=true;
+  if(datos.guardado){
+    const d=new Date(datos.guardado);
+    if(!isNaN(d)) guardadoEn=d.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  }
+  guardarCambios(); /* el respaldo local queda igual al registro compartido */
+  recalcularDerivados();
+  renderInicio(); renderTorres(); renderProtocolos(); renderMatriz(); actualizarCambiosUI();
+  refrescarFicha();
+}
+function alRecibirNube(snap){
+  setAvisoNube(false);
+  if(!snap.exists){
+    /* Migración: el registro compartido está vacío y este navegador ya
+       tenía cambios guardados para este corte → se suben una sola vez. */
+    let datos=null;
+    try{ datos=JSON.parse(localStorage.getItem(CLAVE_CAMBIOS)||"null"); }catch(e){}
+    if(datos && datos.base===BASE_CORTE && Array.isArray(datos.cambios) && datos.cambios.length){
+      nubeRef.set({base:BASE_CORTE, guardado:datos.guardado||new Date().toISOString(), cambios:datos.cambios})
+        .catch(()=>setAvisoNube(true));
+    }
+    return;
+  }
+  const datos=snap.data()||{};
+  if(datos.base!==BASE_CORTE || !Array.isArray(datos.cambios)) return;
+  const entrante=JSON.stringify(datos.cambios.map(c=>({torre:c.torre, proto:c.proto, antes:c.antes, despues:c.despues})));
+  if(entrante===JSON.stringify(cambios)){
+    /* ya es lo que muestra la página (p. ej. el eco del propio guardado) */
+    if(!esSucio() && cambios.length){
+      ultimoGuardadoCompartido=true;
+      if(datos.guardado){
+        const d=new Date(datos.guardado);
+        if(!isNaN(d)) guardadoEn=d.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+      }
+      actualizarGuardarUI();
+    }
+    return;
+  }
+  if(esSucio()) return; /* hay un borrador sin guardar en este navegador: no se pisa */
+  aplicarCambiosNube(datos);
+}
+(function iniciarNube(){
+  try{
+    if(typeof firebase==="undefined" || !firebase.initializeApp || !firebase.firestore) throw new Error("sin SDK de Firebase");
+    firebase.initializeApp(NUBE_CONFIG);
+    nubeRef=firebase.firestore().collection("lat1085").doc("cambios");
+    nubeRef.onSnapshot(alRecibirNube, ()=>setAvisoNube(true));
+  }catch(e){ nubeRef=null; setAvisoNube(true); }
+})();
 
 /* render inicial de la matriz */
 renderMatriz();

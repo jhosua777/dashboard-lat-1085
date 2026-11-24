@@ -123,7 +123,14 @@
   .badge.ok{background:rgba(0,176,80,.16);color:#4be38a;border:1px solid rgba(0,176,80,.55)}
   .badge.part{background:rgba(242,193,78,.14);color:var(--amber);border:1px solid rgba(242,193,78,.5)}
   .badge.matriz{background:rgba(46,117,182,.2);color:#8fc3f2;border:1px solid rgba(46,117,182,.65)}
-  .badge.grupo{background:rgba(237,125,49,.16);color:#ffb27a;border:1px solid rgba(237,125,49,.6)}
+  .badge.estA{background:#00B050;color:#fff}
+.badge.estR{background:#BDD7EE;color:#17365D}
+.badge.estE{background:#FF0000;color:#fff}
+.badge.estO{background:#FFC000;color:#3B2F00}
+.badge.estG{background:#ED7D31;color:#fff}
+.banda-estados{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 4px}
+.banda-estados .be{border-radius:10px;padding:9px 14px;font-size:14px}
+.badge.grupo{background:rgba(237,125,49,.16);color:#ffb27a;border:1px solid rgba(237,125,49,.6)}
   .src-detail{display:block;color:var(--muted);font-size:.78rem;margin-top:4px;line-height:1.35;max-width:300px}
   .fecha{color:var(--muted2);font-size:.78rem;white-space:nowrap}
   .no-results{padding:28px;text-align:center;color:var(--muted);display:none}
@@ -257,7 +264,16 @@
   </section>
 
   <!-- Torres actualizadas -->
-  <section id="torres" aria-labelledby="h-torres">
+  
+<div class="banda-estados">
+  <div class="be" style="background:#12351F;color:#7BE2A0"><b>De la matriz (123):</b></div>
+  <div class="be" style="background:#00B050;color:#fff"><b>47</b> ya estaban <b>Aprobados</b></div>
+  <div class="be" style="background:#BDD7EE;color:#17365D"><b>38</b> estaban en <b>RC</b></div>
+  <div class="be" style="background:#FF0000;color:#fff"><b>36</b> estaban en <b>Ejecución</b></div>
+  <div class="be" style="background:#FFC000;color:#3B2F00"><b>2</b> estaban <b>Observados</b></div>
+  <div class="be" style="background:#ED7D31;color:#fff"><b>+ 12</b> reportados en terreno por el grupo</div>
+</div>
+<section id="torres" aria-labelledby="h-torres">
     <div class="sec-head"><span class="n">127</span><h2 id="h-torres">Torres actualizadas</h2></div>
     <p class="sec-sub">Las 127 torres distintas que tocaron los 135 cambios, ordenadas por número. <b style="color:var(--text)">Toca una torre</b> y la tabla de abajo se filtra para mostrar solo sus cambios, con lo que era antes y cómo quedó.</p>
     <div class="tower-tools">
@@ -302,7 +318,7 @@
       <table>
         <thead><tr>
           <th scope="col">N°</th><th scope="col">Torre</th><th scope="col">Actividad / Protocolo</th>
-          <th scope="col">Antes era</th><th scope="col">Quedó</th><th scope="col">Fuente</th><th scope="col">Fecha</th>
+          <th scope="col">Antes era</th><th scope="col">Quedó</th><th>Estado en la matriz</th><th scope="col">Fuente</th><th scope="col">Fecha</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -451,13 +467,17 @@ function renderTable(){
       : '<span class="badge matriz">Matriz</span>';
     var detalle = d.fuente === "Grupo"
       ? esc(d.origen.replace(/^Grupo 23-11:\s*/, "Reporte 23-11 · "))
-      : "Estado en matriz: " + esc(d.origen);
+      : "";
+    var estBadge = d.fuente === "Grupo"
+      ? '<span class="badge estG">Reportado en terreno</span>'
+      : '<span class="badge ' + ({Aprobado:"estA", RC:"estR", "Ejecución":"estE", Observado:"estO"}[d.origen] || "estR") + '">' + esc(d.origen) + '</span>';
     html += '<tr>' +
       '<td class="num" data-label="N°">'+d.n+'</td>' +
       '<td class="torre" data-label="Torre">'+esc(d.torre)+'</td>' +
       '<td data-label="Actividad">'+esc(d.actividadTxt)+'<span class="proto">'+esc(d.protocolo)+'</span></td>' +
       '<td class="antes" data-label="Antes era">'+esc(fmtVal(d.antes))+'</td>' +
       '<td data-label="Quedó">'+despues+'</td>' +
+      '<td data-label="Estado en la matriz">'+estBadge+'</td>' +
       '<td data-label="Fuente">'+fuenteBadge+'<span class="src-detail">'+detalle+'</span></td>' +
       '<td class="fecha" data-label="Fecha">23-11-2026</td>' +
       '</tr>';

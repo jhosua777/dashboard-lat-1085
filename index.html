@@ -218,6 +218,9 @@
   .guardar-estado.ok{color:var(--ok)}
   @media (prefers-color-scheme: dark){.guardar-estado.ok{color:#7fd6a4}}
   .nube-estado{margin-top:5px;font-size:12.5px;color:var(--muted)}
+  .nube-sync{margin-top:8px;font-size:12px;color:var(--muted)}
+  #btnRestablecer.btn-confirm{background:#fdecea;border-color:#d43a2f;color:#a02c22;font-weight:700}
+  @media (prefers-color-scheme: dark){#btnRestablecer.btn-confirm{background:#3d1a16;border-color:#e06a5c;color:#f0a49c}}
   .cambios-list{margin-top:11px;border-top:1px solid var(--line-soft);padding-top:9px;max-height:172px;overflow:auto}
   .cambios-list .cl-t{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
   .cambio{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line-soft)}
@@ -336,6 +339,7 @@
       <div class="po-sub">de <span id="poAplic">12.035</span> protocolos aplicables</div>
       <div class="po-bar"><i id="poBar" style="width:22.49%"></i></div>
     </div>
+    <div class="nube-sync hidden" id="nubeSync" role="status"></div>
     <button class="btn btn-dl side-dl" type="button" data-dl-resumen><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar resumen rápido</button>
     <nav class="main" id="mainNav" aria-label="Vistas">
       <button data-view="inicio" class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Inicio</button>
@@ -398,13 +402,13 @@
       </div>
       <div class="editbar hidden" id="editBar">
         <div class="eb-title">Modo edición <span class="n" id="ebCount"></span></div>
-        <div class="eb-hint">Elija el estado y toque las celdas de la matriz para aplicarlo; también puede cambiarlo desde la ficha de cada torre. Cuando termine, pulse <b>«Guardar cambios»</b>: ahí los cambios se guardan en este navegador y todo el panel se actualiza (conteos, avances, torres, protocolos y el resumen rápido). Sin guardar, los cambios quedan como borrador en este mismo navegador y el botón se lo recuerda. Descargue el respaldo para enviárselos a Muse y consolidarlos en la matriz oficial, o restablezca al corte para volver a los estados oficiales.</div>
+        <div class="eb-hint">Elija el estado y toque las celdas de la matriz para aplicarlo; también puede cambiarlo desde la ficha de cada torre. <b>El guardado es automático</b>: cada cambio se guarda solo tras una breve pausa, en este navegador y en el registro compartido, y todo el panel se actualiza (conteos, avances, torres, protocolos y el resumen rápido). Con «Guardar ahora» puede forzarlo al instante, pero no es necesario. Descargue el respaldo para enviárselos a Muse y consolidarlos en la matriz oficial, o restablezca al corte para volver a los estados oficiales.</div>
         <div class="palette" id="palette" role="group" aria-label="Estado a aplicar"></div>
         <div class="eb-actions">
           <button class="btn" type="button" id="btnDeshacer">Deshacer último cambio</button>
           <button class="btn" type="button" id="btnRestablecer">Restablecer al corte</button>
           <span class="sp"></span>
-          <button class="btn btn-guard" type="button" id="btnGuardar" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span id="btnGuardarTxt">Guardar cambios</span></button>
+          <button class="btn btn-guard" type="button" id="btnGuardar" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span id="btnGuardarTxt">Guardar ahora</span></button>
           <button class="btn btn-dl" type="button" id="btnDescargarCambios"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar cambios (JSON)</button>
         </div>
         <div class="guardar-estado ok" id="guardarEstado" role="status" aria-live="polite"></div>
@@ -1024,15 +1028,21 @@ function cerrarFicha(){
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") cerrarFicha(); });
 
 /* =================== EDICIÓN DE ESTADOS =================== */
-/* Los cambios se guardan en el navegador (localStorage): al recargar la
-   página siguen aplicados y las celdas quedan marcadas como editadas.
-   El respaldo en JSON permite consolidarlos después en la matriz oficial. */
+/* El guardado es AUTOMÁTICO: cada cambio se guarda solo tras 1 s sin
+   nuevos toques, en el navegador (localStorage) y en el registro
+   compartido, así que al recargar la página los cambios siguen aplicados
+   y las celdas quedan marcadas como editadas. El respaldo en JSON permite
+   consolidarlos después en la matriz oficial. */
 const estadosOriginales = {};
 DATA.matriz.filas.forEach(f=>{ estadosOriginales[f.torre]=f.estados; });
 const cambios = []; /* {torre, proto, antes, despues} */
 let modoEdicion=false, estadoSel="A", fichaTorre=null;
 let snapshotGuardado="[]", guardadoEn="";
 let ultimoGuardadoCompartido=false; /* true si el último guardado llegó al registro compartido */
+let autoTimer=null; /* temporizador del guardado automático (1 s sin nuevos toques) */
+let pendienteCompartir=false; /* hay cambios guardados en el navegador que aún no llegan al registro compartido */
+let ultimoGuardadoAuto=false; /* true si el último guardado fue automático (no con «Guardar ahora») */
+function horaActual(){ return new Date().toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"}); }
 
 /* ---------- Persistencia en el navegador ---------- */
 const CLAVE_CAMBIOS="lat1085-cambios-v1";
@@ -1049,14 +1059,25 @@ function guardarCambios(){
     localStorage.removeItem(CLAVE_BORRADOR);
   }catch(e){ /* sin almacenamiento disponible: los cambios quedan solo en la sesión */ }
 }
-function guardarBorrador(){
-  try{
-    if(esSucio()){
-      localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({base:BASE_CORTE, guardado:new Date().toISOString(), cambios:cambios}));
-    } else {
-      localStorage.removeItem(CLAVE_BORRADOR);
-    }
-  }catch(e){ /* sin almacenamiento disponible: el borrador queda solo en la sesión */ }
+/* ---------- Guardado automático ----------
+   Cada cambio (celda, ficha o deshacer) programa el guardado: tras 1 s
+   sin nuevos toques se persiste en localStorage y se escribe el payload
+   completo en el registro compartido. Sin conexión, queda guardado en el
+   navegador y se reintenta compartir al siguiente cambio o al volver la
+   conexión. «Guardar ahora» fuerza el mismo guardado al instante. */
+function programarGuardadoAutomatico(){
+  if(autoTimer) clearTimeout(autoTimer);
+  autoTimer=setTimeout(ejecutarGuardadoAutomatico, 1000);
+  actualizarGuardarUI();
+}
+function ejecutarGuardadoAutomatico(){
+  autoTimer=null;
+  guardarCambios();
+  snapshotGuardado=JSON.stringify(cambios);
+  guardadoEn=horaActual();
+  ultimoGuardadoAuto=true;
+  actualizarCambiosUI();
+  compartirCambios(); /* escribe además en el registro compartido (Firebase) */
 }
 function cargarBorrador(){
   let datos=null;
@@ -1075,30 +1096,37 @@ function cargarBorrador(){
   });
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI();
+  /* un borrador heredado de la versión anterior se guarda solo, como cualquier cambio */
+  if(esSucio()) programarGuardadoAutomatico();
 }
 function actualizarGuardarUI(){
   const btn=document.getElementById("btnGuardar"), txt=document.getElementById("btnGuardarTxt"), est=document.getElementById("guardarEstado");
   if(!btn || !txt || !est) return;
   const n=cambios.length;
-  if(esSucio()){
+  txt.textContent="Guardar ahora";
+  if(autoTimer){
+    /* guardado automático en curso: se guarda solo en 1 s */
     btn.disabled=false;
-    txt.textContent="Guardar cambios";
     est.className="guardar-estado warn";
-    est.textContent="● Tiene cambios sin guardar. Pulse «Guardar cambios» para guardarlos y actualizar todo el panel.";
+    est.textContent="● Guardando automáticamente…";
+    return;
+  }
+  btn.disabled = !(esSucio() || pendienteCompartir);
+  est.className="guardar-estado ok";
+  if(!n){
+    est.textContent="Sin cambios: todo está al día con el corte. Los cambios que haga se guardan solos, sin apretar nada.";
+  } else if(ultimoGuardadoCompartido && !pendienteCompartir){
+    est.textContent=(ultimoGuardadoAuto? "✓ Guardado y compartido automáticamente" : "✓ Guardado y compartido")+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" en el registro compartido: se ven en cualquier computador que abra la página.";
   } else {
-    btn.disabled=true;
-    txt.textContent= n? "Guardado ✓" : "Guardar cambios";
-    est.className="guardar-estado ok";
-    est.textContent= n? (ultimoGuardadoCompartido
-      ? ("✓ Guardado y compartido"+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" en el registro compartido: se ven en cualquier computador que abra la página.")
-      : ("✓ Guardado y actualizado"+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" guardado"+(n===1?"":"s")+" en este navegador.")) : "Sin cambios por guardar: todo está al día con el corte.";
+    est.textContent="✓ Guardado"+(ultimoGuardadoAuto? " automáticamente" : "")+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" guardado"+(n===1?"":"s")+" en este navegador."+(pendienteCompartir? " Sin conexión con el registro compartido: se compartirán solos al volver la conexión." : "");
   }
 }
 function guardarAhora(){
+  if(autoTimer){ clearTimeout(autoTimer); autoTimer=null; }
   guardarCambios();
   snapshotGuardado=JSON.stringify(cambios);
-  guardadoEn=new Date().toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-  ultimoGuardadoCompartido=false;
+  guardadoEn=horaActual();
+  ultimoGuardadoAuto=false;
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); renderMatriz(); actualizarCambiosUI();
   refrescarFicha();
@@ -1172,18 +1200,17 @@ function actualizarProtocolosOK(){
 }
 
 function actualizarCambiosUI(){
-  const sucio=esSucio();
   if(!modoEdicion) document.getElementById("btnEditarTxt").textContent =
-    "Actualizar estados"+(cambios.length? (sucio? " · "+cambios.length+" sin guardar" : " · "+cambios.length+" guardado"+(cambios.length===1?"":"s")) : "");
+    "Actualizar estados"+(cambios.length? " · "+cambios.length+" guardado"+(cambios.length===1?"":"s") : "");
   document.getElementById("ebCount").textContent =
-    cambios.length? (sucio? "· "+cambios.length+" cambio"+(cambios.length===1?"":"s")+" sin guardar — pulse «Guardar cambios»" : "· "+cambios.length+" cambio"+(cambios.length===1?"":"s")+" guardado"+(cambios.length===1?"":"s")+" en este navegador") : "";
+    cambios.length? "· "+cambios.length+" cambio"+(cambios.length===1?"":"s")+" · guardado automático" : "";
   document.getElementById("btnDeshacer").disabled = !cambios.length;
   document.getElementById("btnRestablecer").disabled = !cambios.length;
   document.getElementById("btnDescargarCambios").disabled = !cambios.length;
   const box=document.getElementById("cambiosList");
   if(!cambios.length){ box.classList.add("hidden"); box.innerHTML=""; actualizarGuardarUI(); return; }
   box.classList.remove("hidden");
-  box.innerHTML='<div class="cl-t">'+(esSucio()?'Cambios sin guardar':'Cambios guardados en este navegador')+(cambios.length>60?' (últimos 60 de '+cambios.length+')':'')+'</div>'+
+  box.innerHTML='<div class="cl-t">Cambios guardados'+(cambios.length>60?' (últimos 60 de '+cambios.length+')':'')+'</div>'+
     cambios.slice(-60).reverse().map(c=>
       '<div class="cambio"><span class="ct">'+esc(c.torre)+'</span>'+
       '<span class="cp">'+esc(DATA.matriz.codigos[c.proto])+' · '+esc(DATA.matriz.protocolos[c.proto])+'</span>'+
@@ -1197,7 +1224,7 @@ function aplicarEstado(torre, idx, nuevo){
   const antes=f.estados[idx]; if(antes===nuevo) return false;
   f.estados=f.estados.substring(0,idx)+nuevo+f.estados.substring(idx+1);
   cambios.push({torre:torre, proto:idx, antes:antes, despues:nuevo});
-  guardarBorrador();
+  programarGuardadoAutomatico();
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI();
   document.getElementById("matrizCounter").innerHTML=
@@ -1219,18 +1246,37 @@ function refrescarFicha(){ if(drawer && fichaTorre) abrirFicha(fichaTorre); }
 
 function deshacerUltimo(){
   const c=cambios.pop(); if(!c) return;
-  guardarBorrador();
+  programarGuardadoAutomatico();
   const f=filasPorTorre[c.torre];
   f.estados=f.estados.substring(0,c.proto)+c.antes+f.estados.substring(c.proto+1);
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI(); renderMatriz();
   refrescarFicha();
 }
+let restablecerArmado=false, restablecerTimer=null;
 function restablecerCorte(){
   if(!cambios.length) return;
+  const btn=document.getElementById("btnRestablecer");
+  if(!restablecerArmado){
+    /* confirmación en la misma página: el primer toque arma, el segundo ejecuta */
+    restablecerArmado=true;
+    btn.textContent="¿Seguro? Toque de nuevo para restablecer";
+    btn.classList.add("btn-confirm");
+    restablecerTimer=setTimeout(()=>{
+      restablecerArmado=false;
+      btn.textContent="Restablecer al corte";
+      btn.classList.remove("btn-confirm");
+    }, 4500);
+    return;
+  }
+  clearTimeout(restablecerTimer); restablecerArmado=false;
+  btn.textContent="Restablecer al corte";
+  btn.classList.remove("btn-confirm");
+  if(autoTimer){ clearTimeout(autoTimer); autoTimer=null; }
   DATA.matriz.filas.forEach(f=>{ f.estados=estadosOriginales[f.torre]; });
   cambios.length=0;
-  guardarBorrador();
+  snapshotGuardado="[]"; guardadoEn=""; ultimoGuardadoCompartido=false; ultimoGuardadoAuto=false; pendienteCompartir=false;
+  guardarCambios(); /* limpia el respaldo local */
   limpiarNube(); /* también limpia el documento compartido */
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI(); renderMatriz();
@@ -1273,7 +1319,7 @@ document.getElementById("btnDeshacer").addEventListener("click",deshacerUltimo);
 document.getElementById("btnRestablecer").addEventListener("click",restablecerCorte);
 document.getElementById("btnDescargarCambios").addEventListener("click",descargarCambios);
 document.getElementById("btnGuardar").addEventListener("click",guardarAhora);
-document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="s"){ e.preventDefault(); if(modoEdicion && esSucio()) guardarAhora(); } });
+document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="s"){ e.preventDefault(); if(modoEdicion && (esSucio() || pendienteCompartir)) guardarAhora(); } });
 (function buildPalette(){
   const pal=document.getElementById("palette");
   pal.innerHTML=ORDEN_EST.map(k=>{
@@ -1292,16 +1338,18 @@ actualizarProtocolosOK();
 
 /* restaurar los cambios guardados en este navegador (sobreviven la recarga) */
 cargarCambiosGuardados();
-/* y el borrador sin guardar, si quedó uno pendiente de «Guardar cambios» */
+/* y un borrador heredado de la versión anterior, si quedó uno: se restaura y se guarda solo */
 cargarBorrador();
 
 /* =================== REGISTRO COMPARTIDO (Firebase Firestore) ===================
-   Los cambios guardados se escriben además en el documento compartido
-   lat1085/cambios, con el mismo payload que usa el respaldo local
-   (lat1085-cambios-v1), para que se vean en cualquier computador que abra
-   la página. La página escucha ese documento en tiempo real y se actualiza
-   sola cuando otra persona guarda. Si Firebase no responde, todo sigue
-   funcionando solo con el respaldo local y se muestra un aviso discreto. */
+   Cada guardado (automático o con «Guardar ahora») escribe además el
+   payload completo en el documento compartido lat1085/cambios, con el
+   mismo formato que usa el respaldo local (lat1085-cambios-v1), para que
+   se vea en cualquier computador que abra la página. La página escucha
+   ese documento en tiempo real y se actualiza sola cuando otra persona
+   guarda. Si Firebase no responde, todo sigue funcionando solo con el
+   respaldo local, se muestra un aviso discreto y el compartido se
+   reintenta al siguiente cambio o al recuperar la conexión. */
 const NUBE_CONFIG={
   apiKey:"AIzaSyAhUKGwlx-1uoYPk4C6yHGlPvcAAl5PLG0",
   authDomain:"dashboard-lat-1085.firebaseapp.com",
@@ -1320,10 +1368,10 @@ function payloadNube(){
     cambios:cambios.map(c=>({torre:c.torre, proto:c.proto, antes:c.antes, despues:c.despues}))};
 }
 function compartirCambios(){
-  if(!nubeRef){ setAvisoNube(true); return; }
+  if(!nubeRef){ pendienteCompartir=true; setAvisoNube(true); actualizarGuardarUI(); return; }
   nubeRef.set(payloadNube()).then(()=>{
-    ultimoGuardadoCompartido=true; setAvisoNube(false); actualizarGuardarUI();
-  }).catch(()=>{ ultimoGuardadoCompartido=false; setAvisoNube(true); actualizarGuardarUI(); });
+    pendienteCompartir=false; ultimoGuardadoCompartido=true; setAvisoNube(false); actualizarGuardarUI();
+  }).catch(()=>{ pendienteCompartir=true; ultimoGuardadoCompartido=false; setAvisoNube(true); actualizarGuardarUI(); });
 }
 function limpiarNube(){
   ultimoGuardadoCompartido=false;
@@ -1344,6 +1392,8 @@ function aplicarCambiosNube(datos){
   });
   snapshotGuardado=JSON.stringify(cambios);
   ultimoGuardadoCompartido=true;
+  pendienteCompartir=false;
+  ultimoGuardadoAuto=false;
   if(datos.guardado){
     const d=new Date(datos.guardado);
     if(!isNaN(d)) guardadoEn=d.toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
@@ -1352,6 +1402,8 @@ function aplicarCambiosNube(datos){
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); renderMatriz(); actualizarCambiosUI();
   refrescarFicha();
+  const ind=document.getElementById("nubeSync");
+  if(ind){ ind.textContent="Registro compartido · actualizado "+horaActual(); ind.classList.remove("hidden"); }
 }
 function alRecibirNube(snap){
   setAvisoNube(false);
@@ -1372,6 +1424,7 @@ function alRecibirNube(snap){
   if(entrante===JSON.stringify(cambios)){
     /* ya es lo que muestra la página (p. ej. el eco del propio guardado) */
     if(!esSucio() && cambios.length){
+      pendienteCompartir=false;
       ultimoGuardadoCompartido=true;
       if(datos.guardado){
         const d=new Date(datos.guardado);
@@ -1381,17 +1434,26 @@ function alRecibirNube(snap){
     }
     return;
   }
-  if(esSucio()) return; /* hay un borrador sin guardar en este navegador: no se pisa */
+  if(esSucio() || pendienteCompartir || autoTimer) return; /* hay cambios locales por guardar o compartir: no se pisan */
   aplicarCambiosNube(datos);
 }
-(function iniciarNube(){
+let nubeIntentada=false;
+function iniciarNube(){
+  if(nubeRef) return;
   try{
     if(typeof firebase==="undefined" || !firebase.initializeApp || !firebase.firestore) throw new Error("sin SDK de Firebase");
-    firebase.initializeApp(NUBE_CONFIG);
+    if(!nubeIntentada){ firebase.initializeApp(NUBE_CONFIG); nubeIntentada=true; }
     nubeRef=firebase.firestore().collection("lat1085").doc("cambios");
     nubeRef.onSnapshot(alRecibirNube, ()=>setAvisoNube(true));
+    if(pendienteCompartir) compartirCambios(); /* había cambios esperando conexión */
   }catch(e){ nubeRef=null; setAvisoNube(true); }
-})();
+}
+iniciarNube();
+/* Al recuperar la conexión: reintentar el compartido pendiente por sí solo */
+window.addEventListener("online", ()=>{
+  if(!nubeRef) iniciarNube();
+  else if(pendienteCompartir) compartirCambios();
+});
 
 /* render inicial de la matriz */
 renderMatriz();

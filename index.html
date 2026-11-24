@@ -199,6 +199,13 @@
   .stbtn.sel::after{content:"✓";font-weight:800}
   .eb-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   .eb-actions .sp{flex:1}
+  .btn-guard{background:#f3c969;border-color:#d9a92f;color:#231a02;font-weight:800;padding:7px 18px}
+  .btn-guard:hover:not(:disabled){background:#f7d67e;border-color:#b97f10}
+  .btn-guard:disabled{opacity:.55;cursor:default}
+  .guardar-estado{margin-top:9px;font-size:13px;font-weight:600}
+  .guardar-estado.warn{color:var(--accent-ink)}
+  .guardar-estado.ok{color:var(--ok)}
+  @media (prefers-color-scheme: dark){.guardar-estado.ok{color:#7fd6a4}}
   .cambios-list{margin-top:11px;border-top:1px solid var(--line-soft);padding-top:9px;max-height:172px;overflow:auto}
   .cambios-list .cl-t{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
   .cambio{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line-soft)}
@@ -372,14 +379,16 @@
       </div>
       <div class="editbar hidden" id="editBar">
         <div class="eb-title">Modo edición <span class="n" id="ebCount"></span></div>
-        <div class="eb-hint">Elija el estado y toque las celdas de la matriz para aplicarlo; también puede cambiarlo desde la ficha de cada torre. Los conteos, avances y el resumen se recalculan al momento. Los cambios quedan guardados en este navegador: al recargar la página siguen aplicados y las celdas editadas quedan marcadas. Descargue el respaldo para enviárselos a Muse y consolidarlos en la matriz oficial, o restablezca al corte para volver a los estados oficiales.</div>
+        <div class="eb-hint">Elija el estado y toque las celdas de la matriz para aplicarlo; también puede cambiarlo desde la ficha de cada torre. Cuando termine, pulse <b>«Guardar cambios»</b>: ahí los cambios se guardan en este navegador y todo el panel se actualiza (conteos, avances, torres, protocolos y el resumen rápido). Sin guardar, los cambios quedan como borrador en este mismo navegador y el botón se lo recuerda. Descargue el respaldo para enviárselos a Muse y consolidarlos en la matriz oficial, o restablezca al corte para volver a los estados oficiales.</div>
         <div class="palette" id="palette" role="group" aria-label="Estado a aplicar"></div>
         <div class="eb-actions">
           <button class="btn" type="button" id="btnDeshacer">Deshacer último cambio</button>
           <button class="btn" type="button" id="btnRestablecer">Restablecer al corte</button>
           <span class="sp"></span>
+          <button class="btn btn-guard" type="button" id="btnGuardar" disabled><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg><span id="btnGuardarTxt">Guardar cambios</span></button>
           <button class="btn btn-dl" type="button" id="btnDescargarCambios"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar cambios (JSON)</button>
         </div>
+        <div class="guardar-estado ok" id="guardarEstado" role="status" aria-live="polite"></div>
         <div class="cambios-list hidden" id="cambiosList"></div>
       </div>
       <div class="legend" id="leyendaMatriz" style="margin:0 2px 10px"></div>
@@ -1000,10 +1009,13 @@ const estadosOriginales = {};
 DATA.matriz.filas.forEach(f=>{ estadosOriginales[f.torre]=f.estados; });
 const cambios = []; /* {torre, proto, antes, despues} */
 let modoEdicion=false, estadoSel="A", fichaTorre=null;
+let snapshotGuardado="[]", guardadoEn="";
 
 /* ---------- Persistencia en el navegador ---------- */
 const CLAVE_CAMBIOS="lat1085-cambios-v1";
+const CLAVE_BORRADOR="lat1085-borrador-v1";
 const BASE_CORTE="23-11-2026";
+function esSucio(){ return JSON.stringify(cambios)!==snapshotGuardado; }
 function guardarCambios(){
   try{
     if(cambios.length){
@@ -1011,7 +1023,59 @@ function guardarCambios(){
     } else {
       localStorage.removeItem(CLAVE_CAMBIOS);
     }
+    localStorage.removeItem(CLAVE_BORRADOR);
   }catch(e){ /* sin almacenamiento disponible: los cambios quedan solo en la sesión */ }
+}
+function guardarBorrador(){
+  try{
+    if(esSucio()){
+      localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({base:BASE_CORTE, guardado:new Date().toISOString(), cambios:cambios}));
+    } else {
+      localStorage.removeItem(CLAVE_BORRADOR);
+    }
+  }catch(e){ /* sin almacenamiento disponible: el borrador queda solo en la sesión */ }
+}
+function cargarBorrador(){
+  let datos=null;
+  try{ datos=JSON.parse(localStorage.getItem(CLAVE_BORRADOR)||"null"); }catch(e){}
+  if(!datos || datos.base!==BASE_CORTE || !Array.isArray(datos.cambios)) return;
+  if(JSON.stringify(datos.cambios)===snapshotGuardado){ try{ localStorage.removeItem(CLAVE_BORRADOR); }catch(e){} return; }
+  DATA.matriz.filas.forEach(f=>{ f.estados=estadosOriginales[f.torre]; });
+  cambios.length=0;
+  datos.cambios.forEach(c=>{
+    const f=filasPorTorre[c.torre];
+    if(!f || typeof c.proto!=="number" || c.proto<0 || c.proto>34) return;
+    if(!EST[c.antes] || !EST[c.despues]) return;
+    if(f.estados[c.proto]!==c.antes) return;
+    f.estados=f.estados.substring(0,c.proto)+c.despues+f.estados.substring(c.proto+1);
+    cambios.push({torre:c.torre, proto:c.proto, antes:c.antes, despues:c.despues});
+  });
+  recalcularDerivados();
+  renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI();
+}
+function actualizarGuardarUI(){
+  const btn=document.getElementById("btnGuardar"), txt=document.getElementById("btnGuardarTxt"), est=document.getElementById("guardarEstado");
+  if(!btn || !txt || !est) return;
+  const n=cambios.length;
+  if(esSucio()){
+    btn.disabled=false;
+    txt.textContent="Guardar cambios";
+    est.className="guardar-estado warn";
+    est.textContent="● Tiene cambios sin guardar. Pulse «Guardar cambios» para guardarlos y actualizar todo el panel.";
+  } else {
+    btn.disabled=true;
+    txt.textContent= n? "Guardado ✓" : "Guardar cambios";
+    est.className="guardar-estado ok";
+    est.textContent= n? ("✓ Guardado y actualizado"+(guardadoEn? " · "+guardadoEn : "")+" — "+n+" cambio"+(n===1?"":"s")+" guardado"+(n===1?"":"s")+" en este navegador.") : "Sin cambios por guardar: todo está al día con el corte.";
+  }
+}
+function guardarAhora(){
+  guardarCambios();
+  snapshotGuardado=JSON.stringify(cambios);
+  guardadoEn=new Date().toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  recalcularDerivados();
+  renderInicio(); renderTorres(); renderProtocolos(); renderMatriz(); actualizarCambiosUI();
+  refrescarFicha();
 }
 function cargarCambiosGuardados(){
   let datos=null;
@@ -1025,10 +1089,12 @@ function cargarCambiosGuardados(){
     f.estados=f.estados.substring(0,c.proto)+c.despues+f.estados.substring(c.proto+1);
     cambios.push({torre:c.torre, proto:c.proto, antes:c.antes, despues:c.despues});
   });
+  snapshotGuardado=JSON.stringify(cambios);
   if(cambios.length){
     recalcularDerivados();
     renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI();
   }
+  actualizarGuardarUI();
 }
 const NOMBRE_DE_CH = {A:"Aprobado", R:"RC", P:"Pendiente ejecución", E:"Ejecución", O:"Observado", N:"N/A", ".":"None"};
 
@@ -1064,22 +1130,24 @@ function recalcularDerivados(){
 }
 
 function actualizarCambiosUI(){
+  const sucio=esSucio();
   if(!modoEdicion) document.getElementById("btnEditarTxt").textContent =
-    "Actualizar estados"+(cambios.length? " · "+cambios.length+" guardado"+(cambios.length===1?"":"s") : "");
+    "Actualizar estados"+(cambios.length? (sucio? " · "+cambios.length+" sin guardar" : " · "+cambios.length+" guardado"+(cambios.length===1?"":"s")) : "");
   document.getElementById("ebCount").textContent =
-    cambios.length? "· "+cambios.length+" cambio"+(cambios.length===1?"":"s")+" guardado"+(cambios.length===1?"":"s")+" en este navegador" : "";
+    cambios.length? (sucio? "· "+cambios.length+" cambio"+(cambios.length===1?"":"s")+" sin guardar — pulse «Guardar cambios»" : "· "+cambios.length+" cambio"+(cambios.length===1?"":"s")+" guardado"+(cambios.length===1?"":"s")+" en este navegador") : "";
   document.getElementById("btnDeshacer").disabled = !cambios.length;
   document.getElementById("btnRestablecer").disabled = !cambios.length;
   document.getElementById("btnDescargarCambios").disabled = !cambios.length;
   const box=document.getElementById("cambiosList");
-  if(!cambios.length){ box.classList.add("hidden"); box.innerHTML=""; return; }
+  if(!cambios.length){ box.classList.add("hidden"); box.innerHTML=""; actualizarGuardarUI(); return; }
   box.classList.remove("hidden");
-  box.innerHTML='<div class="cl-t">Cambios guardados en este navegador'+(cambios.length>60?' (últimos 60 de '+cambios.length+')':'')+'</div>'+
+  box.innerHTML='<div class="cl-t">'+(esSucio()?'Cambios sin guardar':'Cambios guardados en este navegador')+(cambios.length>60?' (últimos 60 de '+cambios.length+')':'')+'</div>'+
     cambios.slice(-60).reverse().map(c=>
       '<div class="cambio"><span class="ct">'+esc(c.torre)+'</span>'+
       '<span class="cp">'+esc(DATA.matriz.codigos[c.proto])+' · '+esc(DATA.matriz.protocolos[c.proto])+'</span>'+
       chipEstado(c.antes)+'<span class="arrow">→</span>'+chipEstado(c.despues)+'</div>'
     ).join("");
+  actualizarGuardarUI();
 }
 
 function aplicarEstado(torre, idx, nuevo){
@@ -1087,7 +1155,7 @@ function aplicarEstado(torre, idx, nuevo){
   const antes=f.estados[idx]; if(antes===nuevo) return false;
   f.estados=f.estados.substring(0,idx)+nuevo+f.estados.substring(idx+1);
   cambios.push({torre:torre, proto:idx, antes:antes, despues:nuevo});
-  guardarCambios();
+  guardarBorrador();
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI();
   document.getElementById("matrizCounter").innerHTML=
@@ -1109,7 +1177,7 @@ function refrescarFicha(){ if(drawer && fichaTorre) abrirFicha(fichaTorre); }
 
 function deshacerUltimo(){
   const c=cambios.pop(); if(!c) return;
-  guardarCambios();
+  guardarBorrador();
   const f=filasPorTorre[c.torre];
   f.estados=f.estados.substring(0,c.proto)+c.antes+f.estados.substring(c.proto+1);
   recalcularDerivados();
@@ -1120,7 +1188,7 @@ function restablecerCorte(){
   if(!cambios.length) return;
   DATA.matriz.filas.forEach(f=>{ f.estados=estadosOriginales[f.torre]; });
   cambios.length=0;
-  guardarCambios();
+  guardarBorrador();
   recalcularDerivados();
   renderInicio(); renderTorres(); renderProtocolos(); actualizarCambiosUI(); renderMatriz();
   refrescarFicha();
@@ -1161,6 +1229,8 @@ btnEditar.addEventListener("click",()=>setModoEdicion(!modoEdicion));
 document.getElementById("btnDeshacer").addEventListener("click",deshacerUltimo);
 document.getElementById("btnRestablecer").addEventListener("click",restablecerCorte);
 document.getElementById("btnDescargarCambios").addEventListener("click",descargarCambios);
+document.getElementById("btnGuardar").addEventListener("click",guardarAhora);
+document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="s"){ e.preventDefault(); if(modoEdicion && esSucio()) guardarAhora(); } });
 (function buildPalette(){
   const pal=document.getElementById("palette");
   pal.innerHTML=ORDEN_EST.map(k=>{
@@ -1178,6 +1248,8 @@ actualizarCambiosUI();
 
 /* restaurar los cambios guardados en este navegador (sobreviven la recarga) */
 cargarCambiosGuardados();
+/* y el borrador sin guardar, si quedó uno pendiente de «Guardar cambios» */
+cargarBorrador();
 
 /* render inicial de la matriz */
 renderMatriz();

@@ -49,6 +49,17 @@
     border-radius:8px;padding:9px 12px;font-size:12.5px;color:#c6d8ea;
   }
   .corte b{color:#fff;font-size:13.5px}
+  .prot-ok{
+    margin:10px 18px 4px;background:var(--navy-2);border:1px solid var(--navy-line);
+    border-radius:8px;padding:10px 12px 12px;
+  }
+  .prot-ok .po-lbl{display:flex;align-items:center;gap:7px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8fb0d1;font-weight:600}
+  .prot-ok .po-dot{width:9px;height:9px;border-radius:50%;background:#00B050;flex:0 0 auto}
+  .prot-ok .po-num{margin-top:3px;color:#fff;font-size:24px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  .prot-ok .po-num .po-pct{color:#3ddc7d;font-size:19px}
+  .prot-ok .po-sub{font-size:12.5px;color:#a9c2da}
+  .prot-ok .po-bar{margin-top:8px;height:6px;border-radius:3px;background:#123a63;overflow:hidden}
+  .prot-ok .po-bar i{display:block;height:100%;background:#00B050;border-radius:3px;transition:width .3s ease}
   nav.main{padding:12px 10px;display:flex;flex-direction:column;gap:2px}
   nav.main button{
     display:flex;align-items:center;gap:10px;width:100%;text-align:left;
@@ -296,6 +307,7 @@
     .sidebar{width:100%;flex:none;height:auto;position:static}
     .brand{padding:14px 16px 10px}
     .corte{margin:10px 16px 2px}
+    .prot-ok{margin:10px 16px 2px}
     nav.main{flex-direction:row;flex-wrap:wrap;padding:10px}
     nav.main button{width:auto;padding:8px 12px}
     nav.main button.active{box-shadow:inset 0 -3px 0 var(--accent)}
@@ -317,6 +329,12 @@
       <div class="sub">Matriz de protocolos por torre</div>
     </div>
     <div class="corte">Corte de datos<br><b>23 de noviembre de 2026</b></div>
+    <div class="prot-ok" aria-live="polite">
+      <div class="po-lbl"><span class="po-dot"></span>Protocolos OK</div>
+      <div class="po-num"><span id="poNum">2.707</span> <span class="po-pct" id="poPct">· 22,5%</span></div>
+      <div class="po-sub">de <span id="poAplic">12.035</span> protocolos aplicables</div>
+      <div class="po-bar"><i id="poBar" style="width:22.49%"></i></div>
+    </div>
     <button class="btn btn-dl side-dl" type="button" data-dl-resumen><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/></svg>Descargar resumen rápido</button>
     <nav class="main" id="mainNav" aria-label="Vistas">
       <button data-view="inicio" class="active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>Inicio</button>
@@ -1127,6 +1145,21 @@ function recalcularDerivados(){
     e.faltan=etAplic[ei]-etAp[ei];
     e.pct= etAplic[ei]? Math.round(etAp[ei]/etAplic[ei]*100) : 0;
   });
+  actualizarProtocolosOK();
+}
+
+/* Bloque «Protocolos OK» de la barra lateral: misma definición del panel
+   (Aprobados sobre aplicables = total de celdas menos N/A). Se refresca en
+   cada recálculo, así sigue solo a las ediciones de la matriz. */
+function actualizarProtocolosOK(){
+  const num=document.getElementById("poNum"); if(!num) return;
+  const g=DATA.matriz.global;
+  const aprobados=g["Aprobado"], aplicables=14315-g["N/A"];
+  const pct= aplicables? aprobados/aplicables*100 : 0;
+  num.textContent=fmt(aprobados);
+  document.getElementById("poPct").textContent="· "+pct.toFixed(1).replace(".",",")+"%";
+  document.getElementById("poAplic").textContent=fmt(aplicables);
+  document.getElementById("poBar").style.width=pct+"%";
 }
 
 function actualizarCambiosUI(){
@@ -1245,6 +1278,7 @@ document.addEventListener("keydown",e=>{ if((e.ctrlKey||e.metaKey) && e.key.toLo
   }));
 })();
 actualizarCambiosUI();
+actualizarProtocolosOK();
 
 /* restaurar los cambios guardados en este navegador (sobreviven la recarga) */
 cargarCambiosGuardados();

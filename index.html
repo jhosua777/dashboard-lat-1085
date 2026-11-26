@@ -416,8 +416,8 @@
       <button data-view="torres"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 5 22M12 2l7 20M8 12h8M6.5 17h11M12 7v15"/></svg>Torres</button>
       <button data-view="protocolos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6l1 1 2-2M3.5 12l1 1 2-2M3.5 18l1 1 2-2"/></svg>Protocolos</button>
       <button data-view="angulos"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20 20 4"/><path d="M4 20h16M4 20V6"/><path d="M4 13a9 9 0 0 1 6 3.5"/></svg>Ángulos y Planos</button>
-      <button data-view="actividades"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Actividades del día</button>
-      <button data-view="registro"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg>Registro</button>
+      <button data-view="actividades"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Actividades del día</button><button id="btnCerrarSesion" type="button"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Cerrar sesión</button>
+      
     </nav>
     <div class="side-foot">409 torres · 35 protocolos<br>Fuente: Matriz LAT 1085</div>
   </aside>
@@ -555,13 +555,6 @@
         <button class="btn" id="actReset">Desmarcar todas</button>
       </div>
       <div id="actBox"></div>
-    </section>
-
-    <section class="view" id="view-registro">
-      <div class="view-head"><h2>Registro de acceso y cambios</h2><p>Quién entró, cuándo y qué movió. Solo se llena cuando la persona entra con su correo aprobado.</p></div>
-      <button class="btn" id="btnRegistro" type="button">Actualizar registro</button>
-      <h3 style="margin-top:16px">Entradas</h3><div id="regAccesos"><p>Sin datos todavía.</p></div>
-      <h3 style="margin-top:16px">Cambios de estado</h3><div id="regHistorial"><p>Sin datos todavía.</p></div>
     </section>
     <footer><span class="firma">Elaborado por Jhosua Herrera</span>
 <details class="legal" style="font-size:.78rem;opacity:.85;margin-top:.35rem"><summary>Privacidad y términos</summary>
@@ -1487,26 +1480,6 @@ function registrarHistorial(){
     histEnviados=cambios.length;
   }catch(e){}
 }
-function cargarRegistro(){
-  const boxA=document.getElementById("regAccesos"), boxH=document.getElementById("regHistorial");
-  if(!boxA||!boxH) return;
-  try{
-    const db=firebase.firestore();
-    db.collection("accesos").orderBy("entrada","desc").limit(50).get().then(q=>{
-      if(q.empty){ boxA.innerHTML="<p>Sin entradas registradas todavía.</p>"; return; }
-      let h='<table class="tbl"><thead><tr><th>Correo</th><th>Entrada</th><th>Última actividad</th><th>Dispositivo</th></tr></thead><tbody>';
-      q.forEach(d=>{ const a=d.data(); h+="<tr><td>"+esc(a.correo||"")+"</td><td>"+esc((a.entrada||"").replace("T"," ").slice(0,19))+"</td><td>"+esc((a.ultima||"").replace("T"," ").slice(0,19))+"</td><td>"+esc((a.dispositivo||"").slice(0,60))+"</td></tr>"; });
-      boxA.innerHTML=h+"</tbody></table>";
-    }).catch(()=>{ boxA.innerHTML="<p>No se pudo leer el registro de entradas.</p>"; });
-    db.collection("historial").orderBy("fecha","desc").limit(80).get().then(q=>{
-      if(q.empty){ boxH.innerHTML="<p>Sin cambios registrados todavía.</p>"; return; }
-      let h='<table class="tbl"><thead><tr><th>Fecha</th><th>Correo</th><th>Torre</th><th>Protocolo</th><th>Cambio</th></tr></thead><tbody>';
-      q.forEach(d=>{ const a=d.data(); const ea=EST[a.antes], ed=EST[a.despues]; h+="<tr><td>"+esc((a.fecha||"").replace("T"," ").slice(0,19))+"</td><td>"+esc(a.correo||"")+"</td><td>"+esc(a.torre||"")+"</td><td>"+esc(a.protocolo||"")+"</td><td>"+esc(ea?ea.nombre:a.antes)+" → "+esc(ed?ed.nombre:a.despues)+"</td></tr>"; });
-      boxH.innerHTML=h+"</tbody></table>";
-    }).catch(()=>{ boxH.innerHTML="<p>No se pudo leer el historial de cambios.</p>"; });
-  }catch(e){}
-}
-const btnReg=document.getElementById("btnRegistro"); if(btnReg) btnReg.addEventListener("click",cargarRegistro);
 function limpiarNube(){
   ultimoGuardadoCompartido=false;
   if(!nubeRef) return;
@@ -1613,6 +1586,11 @@ renderMatriz();
   var gate=document.getElementById('lampGate');
   if(!gate) return;
   var lamp=document.getElementById('lgLamp'),form=document.getElementById('lgForm');
+  var btnCerrar=document.getElementById('btnCerrarSesion');
+  if(btnCerrar) btnCerrar.addEventListener('click',function(){
+    try{ firebase.auth().signOut().then(function(){ location.reload(); }).catch(function(){ location.reload(); }); }
+    catch(e){ location.reload(); }
+  });
   var email=document.getElementById('lgEmail'),acepto=document.getElementById('lgAcepto'),btn=document.getElementById('lgEntrar');
   var corpEmail=document.getElementById('lgCorpEmail'),linkBtn=document.getElementById('lgLinkBtn'),linkEstado=document.getElementById('lgLinkEstado');
   var nota=gate.querySelector('.lg-note');

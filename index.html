@@ -1572,22 +1572,35 @@ function alRecibirNube(snap){
   aplicarCambiosNube(datos);
 }
 let nubeIntentada=false;
-function iniciarNube(){
-  if(nubeRef) return;
+let nubeUnsub=null;
+let nubeViva=false;
+let nubeReintentos=0;
+function iniciarNube(forzar){
+  if(nubeRef && nubeViva && !forzar) return;
   try{
     if(typeof firebase==="undefined" || !firebase.initializeApp || !firebase.firestore) throw new Error("sin SDK de Firebase");
     if(!nubeIntentada){ firebase.initializeApp(NUBE_CONFIG); nubeIntentada=true; }
     nubeRef=firebase.firestore().collection("lat1085").doc("cambios");
-    nubeRef.onSnapshot(alRecibirNube, ()=>setAvisoNube(true));
+    if(nubeUnsub){ try{ nubeUnsub(); }catch(e){} nubeUnsub=null; }
+    nubeUnsub=nubeRef.onSnapshot(
+      snap=>{ nubeViva=true; nubeReintentos=0; alRecibirNube(snap); },
+      ()=>{
+        /* Error de escucha (p. ej. antes de iniciar sesión o corte de red):
+           la suscripción muere, así que se reintenta sola. */
+        nubeViva=false; nubeUnsub=null; setAvisoNube(true);
+        if(nubeReintentos<12){ nubeReintentos++; setTimeout(()=>iniciarNube(true), 8000); }
+      });
     if(pendienteCompartir) compartirCambios(); /* había cambios esperando conexión */
-  }catch(e){ nubeRef=null; setAvisoNube(true); }
+  }catch(e){ nubeRef=null; nubeViva=false; setAvisoNube(true); }
 }
 iniciarNube();
 /* Al recuperar la conexión: reintentar el compartido pendiente por sí solo */
 window.addEventListener("online", ()=>{
-  if(!nubeRef) iniciarNube();
+  if(!nubeRef || !nubeViva) iniciarNube(true);
   else if(pendienteCompartir) compartirCambios();
 });
+/* La puerta llama esto al completar el ingreso: reconecta y sube lo pendiente */
+window.__latReconectar=function(){ iniciarNube(true); if(pendienteCompartir) compartirCambios(); };
 
 /* render inicial de la matriz */
 renderMatriz();
@@ -1622,6 +1635,7 @@ renderMatriz();
     try{ sessionStorage.setItem('lat1085_proto_ok','1'); }catch(e){}
     gate.style.display='none';
     registrarAcceso(user);
+    if(window.__latReconectar) window.__latReconectar();
   }
   btn.addEventListener('click',function(){
     try{

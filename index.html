@@ -360,6 +360,11 @@
   #lampGate .lg-btn:disabled{opacity:.45;cursor:default}
   #lampGate .lg-skip{margin-top:10px;width:100%;padding:8px;border:0;background:none;color:#8fa3bd;font-size:12px;cursor:pointer;text-decoration:underline}
   #lampGate .lg-note{font-size:11.5px;color:#8fa3bd;line-height:1.5;margin-top:10px}
+  #lampGate .lg-btn-verde{background:linear-gradient(135deg,#00c853,#00a843)}
+  #lampGate .lg-div{border:0;border-top:1px solid rgba(255,255,255,.14);margin:18px 0 4px}
+  #lampGate .lg-estado{font-size:12.5px;line-height:1.5;margin-top:10px;min-height:18px}
+  #lampGate .lg-estado.mal{color:#ff8a80}
+  #lampGate .lg-estado.bien{color:#7be495}
   #lampGate .lg-badge{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#ffd97a;border:1px solid rgba(255,217,122,.4);padding:4px 9px;border-radius:999px;background:rgba(255,217,122,.08);margin-bottom:10px}
 </style>
 <style id="torre-lat1085">.lg-lamp{width:auto}.lg-torre{display:block;width:230px;max-width:100%;margin:0 auto;border-radius:10px;filter:grayscale(.6) brightness(.55);transition:filter .45s ease,box-shadow .45s ease}.lg-lamp.on .lg-torre{filter:grayscale(0) brightness(1.15) drop-shadow(0 0 14px rgba(34,211,238,.85));box-shadow:0 0 26px rgba(34,211,238,.45)}@media (prefers-reduced-motion:reduce){.lg-torre{transition:none}}</style>
@@ -378,9 +383,14 @@
       <label for="lgEmail">Correo aprobado</label>
       <input type="email" id="lgEmail" placeholder="tu.correo@ejemplo.cl" autocomplete="off">
       <div class="lg-terms"><input type="checkbox" id="lgAcepto"><span>Acepto los términos de uso interno: acceso personal, cada cambio de estado queda registrado y es responsabilidad de quien lo realiza. Versión de términos v1 · 2026-11-26.</span></div>
-      <button class="lg-btn" id="lgEntrar" type="button" disabled>Entrar con Google</button>
-      <button class="lg-skip" id="lgSkip" type="button">Entrar sin correo (sin registro)</button>
-      <p class="lg-note">Ingreso con Google solo para correos aprobados por Jhosua Herrera. Tu entrada y tus cambios quedan registrados con correo y hora. Elaborado por Jhosua Herrera</p>
+      <button class="lg-btn lg-btn-verde" id="lgEntrar" type="button" disabled>Entrar con Google</button>
+      <hr class="lg-div">
+      <label for="lgCorpEmail">¿Correo de la empresa (Outlook u otro)?</label>
+      <input type="email" id="lgCorpEmail" placeholder="tu correo corporativo" autocomplete="off">
+      <button class="lg-btn lg-btn-verde" id="lgLinkBtn" type="button" disabled>Enviarme el enlace de ingreso</button>
+      <p class="lg-note" style="margin-top:8px">Te llega un enlace a ese correo; lo pinchas y entras. Solo correos aprobados.</p>
+      <p class="lg-estado" id="lgLinkEstado"></p>
+      <p class="lg-note">Ingreso con Google o con enlace a tu correo, solo para correos aprobados por Jhosua Herrera. Tu entrada y tus cambios quedan registrados con correo y hora. Elaborado por Jhosua Herrera</p>
     </div>
   </div>
 </div>
@@ -555,7 +565,7 @@
     </section>
     <footer><span class="firma">Elaborado por Jhosua Herrera</span>
 <details class="legal" style="font-size:.78rem;opacity:.85;margin-top:.35rem"><summary>Privacidad y términos</summary>
-<p style="margin:.35rem 0">Uso interno de trabajo para la Línea 1085. Este panel muestra la matriz LAT con corte 23-11-2026 y permite cambiar estatus; los cambios se comparten en el registro del equipo. En tu navegador solo se guarda el respaldo local de tus cambios (almacenamiento local, para cuando no hay conexión) y, en el prototipo de acceso, una marca de sesión; no se usan cookies de analíticas ni de marketing. No ingreses datos personales sensibles en los cambios. El contenido y la organización de este panel son de Jhosua Herrera Espinoza; su uso comercial o distribución fuera del equipo requiere su autorización. Al usarlo aceptas estas condiciones. Versión de términos v1 · 2026-11-26. Para acceso o privacidad, contacta a Jhosua Herrera en jhosuaespinoza77@gmail.com.</p>
+<p style="margin:.35rem 0">Uso interno de trabajo para la Línea 1085. Este panel muestra la matriz LAT con corte 23-11-2026 y permite cambiar estatus; los cambios se comparten en el registro del equipo. En tu navegador solo se guarda el respaldo local de tus cambios (almacenamiento local, para cuando no hay conexión) y, en el prototipo de acceso, una marca de sesión y tu correo mientras completas el ingreso por enlace; no se usan cookies de analíticas ni de marketing. No ingreses datos personales sensibles en los cambios. El contenido y la organización de este panel son de Jhosua Herrera Espinoza; su uso comercial o distribución fuera del equipo requiere su autorización. Al usarlo aceptas estas condiciones. Versión de términos v1 · 2026-11-26. Para acceso o privacidad, contacta a Jhosua Herrera en jhosuaespinoza77@gmail.com.</p>
 </details></footer>
   </main>
 </div>
@@ -1590,10 +1600,11 @@ renderMatriz();
   var gate=document.getElementById('lampGate');
   if(!gate) return;
   var lamp=document.getElementById('lgLamp'),form=document.getElementById('lgForm');
-  var email=document.getElementById('lgEmail'),acepto=document.getElementById('lgAcepto'),btn=document.getElementById('lgEntrar'),skip=document.getElementById('lgSkip');
+  var email=document.getElementById('lgEmail'),acepto=document.getElementById('lgAcepto'),btn=document.getElementById('lgEntrar');
+  var corpEmail=document.getElementById('lgCorpEmail'),linkBtn=document.getElementById('lgLinkBtn'),linkEstado=document.getElementById('lgLinkEstado');
   var nota=gate.querySelector('.lg-note');
   var on=false;
-  function validar(){ btn.disabled=!(on&&acepto.checked); }
+  function validar(){ var ok=(on&&acepto.checked); btn.disabled=!ok; if(linkBtn) linkBtn.disabled=!ok; }
   lamp.addEventListener('click',function(){ on=!on; lamp.classList.toggle('on',on); form.style.opacity=on?'1':'.35'; validar(); });
   acepto.addEventListener('change',validar);
   function registrarAcceso(user){
@@ -1628,7 +1639,46 @@ renderMatriz();
       });
     }catch(e){ if(nota) nota.textContent="El ingreso con Google no está disponible en este momento."; }
   });
-  skip.addEventListener('click',function(){ gate.style.display='none'; });
+  /* Enlace por correo (2026-11-26, igual que Transmittals 1085): para correos
+     corporativos Outlook u otros. Solo correos aprobados; el correo se guarda
+     en el navegador solo para completar el ingreso al pinchar el enlace. */
+  function estadoLink(msg,clase){ if(linkEstado){ linkEstado.textContent=msg; linkEstado.className='lg-estado '+(clase||''); } }
+  if(linkBtn) linkBtn.addEventListener('click',function(){
+    var correo=(corpEmail.value||'').trim().toLowerCase();
+    if(!correo || correo.indexOf('@')===-1){ estadoLink('Escribe tu correo corporativo para enviarte el enlace.','mal'); return; }
+    if(CORREOS_OK.indexOf(correo)===-1){ estadoLink('Ese correo todavía no está aprobado. Pídele a Jhosua que lo agregue.','mal'); return; }
+    try{
+      var ajustes={url:'https://jhosua777.github.io/dashboard-lat-1085/',handleCodeInApp:true};
+      firebase.auth().sendSignInLinkToEmail(correo,ajustes).then(function(){
+        try{ localStorage.setItem('lat1085_email_link',correo); }catch(e){}
+        estadoLink('Enlace enviado. Revisa tu correo y pincha el enlace para entrar.','bien');
+      }).catch(function(){
+        estadoLink('No se pudo enviar el enlace. Revisa el correo e intenta de nuevo.','mal');
+      });
+    }catch(e){ estadoLink('El ingreso por enlace no está disponible en este momento.','mal'); }
+  });
+  try{
+    if(typeof firebase!=="undefined" && firebase.auth && firebase.auth().isSignInWithEmailLink(window.location.href)){
+      var correoLink='';
+      try{ correoLink=localStorage.getItem('lat1085_email_link')||''; }catch(e){}
+      if(!correoLink){ correoLink=(window.prompt('Escribe tu correo para completar el ingreso')||'').trim().toLowerCase(); }
+      if(correoLink){
+        firebase.auth().signInWithEmailLink(correoLink,window.location.href).then(function(res){
+          var user=res.user;
+          try{ localStorage.removeItem('lat1085_email_link'); }catch(e){}
+          try{ history.replaceState(null,'',window.location.pathname); }catch(e){}
+          if(CORREOS_OK.indexOf((user.email||'').toLowerCase())===-1){
+            firebase.auth().signOut();
+            if(nota) nota.textContent='Este correo todavía no está aprobado para entrar. Pide acceso a Jhosua Herrera.';
+            return;
+          }
+          entrar(user);
+        }).catch(function(){
+          estadoLink('El enlace ya no sirve o venció. Pide uno nuevo.','mal');
+        });
+      }
+    }
+  }catch(e){}
   try{
     if(typeof firebase!=="undefined" && firebase.auth){
       firebase.auth().onAuthStateChanged(function(user){

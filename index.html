@@ -1,7 +1,16 @@
 <!doctype html>
+<!-- Panel web LAT 1085 — copia optimizada local (no publicada)
+     Plan de Optimización y Seguridad Profesional aplicado el 2026-11-26.
+     Alcance: solo Línea 1085. Sin tocar Drive, sin mezclar Subestación 1049 ni boletas.
+     Corte de datos: 23-11-2026. Registro compartido: Firebase lat1085/cambios (sin cambios en vivo).
+     Elaborado por Jhosua Herrera
+-->
 <html lang="es">
 <head>
 <meta charset="utf-8" />
+<meta name="description" content="Panel web LAT 1085 — matriz, actividades del día y cambio de estatus. Corte 23-11-2026." />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<meta name="theme-color" content="#0a2540" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="color-scheme" content="light dark" />
 <link rel="icon" href="data:," />
@@ -323,8 +332,57 @@
     .counter{margin-left:0;width:100%}
   }
 </style>
+<style id="glassy-lat1085">
+  /* Glassy LAT 1085 (2026-11-26, aprobado por Jhosua, solo copia local):
+     estilo cristal solo en marco y tarjetas. La matriz NO se toca:
+     .matrix-wrap/.tbl-wrap quedan sólidos y los colores de estado intactos. */
+  body{background:linear-gradient(160deg,var(--bg),var(--bg) 60%,var(--chip))}
+  .sidebar{background:linear-gradient(180deg,var(--navy),var(--navy-2));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .card,.kpi{background:var(--card);background:color-mix(in srgb,var(--card) 86%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:16px;box-shadow:0 8px 28px rgba(10,37,64,.10)}
+  .prot-ok,.corte{border-radius:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .matrix-wrap,.tbl-wrap{background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none}
+  /* Lamp login prototipo */
+  #lampGate{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:18px;background:radial-gradient(900px 520px at 20% -10%,#1d3a5f 0%,transparent 60%),linear-gradient(160deg,#070b12,#0a1424 55%,#081018);color:#eef2f7}
+  #lampGate .lg-box{width:min(680px,100%);display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:700px){#lampGate .lg-box{grid-template-columns:1fr}}
+  #lampGate .lg-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:18px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:22px}
+  #lampGate .lg-lamp{width:110px;margin:4px auto;text-align:center;cursor:pointer;background:none;border:0;color:inherit}
+  #lampGate .lg-shade{width:100px;height:56px;margin:0 auto;background:linear-gradient(180deg,#2b3a52,#16233a);clip-path:polygon(22% 0,78% 0,100% 100%,0 100%)}
+  #lampGate .lg-bulb{width:30px;height:30px;border-radius:50%;background:#3a465c;margin:-7px auto 0}
+  #lampGate .lg-stem{width:6px;height:38px;background:#2b3a52;margin:0 auto}
+  #lampGate .lg-base{width:68px;height:9px;border-radius:6px;background:#2b3a52;margin:0 auto}
+  #lampGate .on .lg-shade{background:linear-gradient(180deg,#ffe9a8,#f3c969)}
+  #lampGate .on .lg-bulb{background:#fff3c4;box-shadow:0 0 38px 12px rgba(255,220,120,.55)}
+  #lampGate label{display:block;font-size:13px;color:#c6d3e6;margin:12px 0 6px}
+  #lampGate input[type=email]{width:100%;padding:11px 13px;border-radius:11px;border:1px solid rgba(255,255,255,.22);background:rgba(0,0,0,.28);color:#fff;font-size:15px}
+  #lampGate .lg-terms{display:flex;gap:9px;font-size:12.5px;color:#c6d3e6;line-height:1.45;margin-top:12px}
+  #lampGate .lg-btn{margin-top:16px;width:100%;padding:12px;border:0;border-radius:11px;background:linear-gradient(135deg,#2e7cd6,#00b0f0);color:#fff;font-weight:700;cursor:pointer}
+  #lampGate .lg-btn:disabled{opacity:.45;cursor:default}
+  #lampGate .lg-skip{margin-top:10px;width:100%;padding:8px;border:0;background:none;color:#8fa3bd;font-size:12px;cursor:pointer;text-decoration:underline}
+  #lampGate .lg-note{font-size:11.5px;color:#8fa3bd;line-height:1.5;margin-top:10px}
+  #lampGate .lg-badge{display:inline-block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#ffd97a;border:1px solid rgba(255,217,122,.4);padding:4px 9px;border-radius:999px;background:rgba(255,217,122,.08);margin-bottom:10px}
+</style>
 </head>
 <body>
+<div id="lampGate" role="dialog" aria-label="Acceso prototipo LAT 1085">
+  <div class="lg-box">
+    <div class="lg-card" style="text-align:center">
+      <span class="lg-badge">Prototipo local · Sin acceso real</span>
+      <button class="lg-lamp" id="lgLamp" type="button" aria-label="Encender lámpara"><span class="lg-shade" style="display:block"></span><span class="lg-bulb" style="display:block"></span><span class="lg-stem" style="display:block"></span><span class="lg-base" style="display:block"></span></button>
+      <p style="color:#a9b8cc;font-size:13px;margin-top:10px">Toca la lámpara para encender el acceso</p>
+      <p style="font-size:13px;margin-top:14px">Dashboard LAT 1085<br><span style="color:#a9b8cc">Corte 23-11-2026 · 409 torres</span></p>
+    </div>
+    <div class="lg-card" id="lgForm" style="opacity:.35">
+      <strong>Acceso al panel</strong>
+      <label for="lgEmail">Correo aprobado</label>
+      <input type="email" id="lgEmail" placeholder="tu.correo@ejemplo.cl" autocomplete="off">
+      <div class="lg-terms"><input type="checkbox" id="lgAcepto"><span>Acepto los términos de uso interno: acceso personal, cada cambio de estado queda registrado y es responsabilidad de quien lo realiza. Versión de términos v1 · 2026-11-26.</span></div>
+      <button class="lg-btn" id="lgEntrar" type="button" disabled>Entrar al prototipo</button>
+      <button class="lg-skip" id="lgSkip" type="button">Entrar sin correo (solo prototipo local)</button>
+      <p class="lg-note">Maqueta visual aprobada por Jhosua el 2026-11-26: no valida correos, no usa Firebase Auth y no guarda el correo. La puerta real se construye con los 12 correos aprobados. Elaborado por Jhosua Herrera</p>
+    </div>
+  </div>
+</div>
 <div class="layout">
   <aside class="sidebar">
     <div class="brand">
@@ -388,6 +446,12 @@
               <option value="P">Pendiente ejecución</option><option value="E">Ejecución</option>
               <option value="O">Observado</option><option value="N">N/A</option><option value=".">Sin registro</option>
             </select></div>
+          <div class="field"><label>Zona</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button type="button" class="btn" id="zonaToda">Toda la matriz</button>
+              <button type="button" class="btn" id="zonaNorte">Zona Norte (T001–T236)</button>
+              <button type="button" class="btn" id="zonaSur">Zona Sur (T237–T409)</button>
+            </div></div>
           <button class="btn" id="btnLimpiar">Limpiar filtros</button>
           <div class="counter" id="matrizCounter"></div>
         </div>
@@ -481,7 +545,10 @@
       <div id="actBox"></div>
     </section>
 
-    <footer><span class="firma">Elaborado por Jhosua Herrera</span></footer>
+    <footer><span class="firma">Elaborado por Jhosua Herrera</span>
+<details class="legal" style="font-size:.78rem;opacity:.85;margin-top:.35rem"><summary>Privacidad y términos</summary>
+<p style="margin:.35rem 0">Uso interno de trabajo para la Línea 1085. Este panel muestra la matriz LAT con corte 23-11-2026 y permite cambiar estatus; los cambios se comparten en el registro del equipo. En tu navegador solo se guarda el respaldo local de tus cambios (almacenamiento local, para cuando no hay conexión) y, en el prototipo de acceso, una marca de sesión; no se usan cookies de analíticas ni de marketing. No ingreses datos personales sensibles en los cambios. El contenido y la organización de este panel son de Jhosua Herrera Espinoza; su uso comercial o distribución fuera del equipo requiere su autorización. Al usarlo aceptas estas condiciones. Versión de términos v1 · 2026-11-26. Para acceso o privacidad, contacta a Jhosua Herrera en jhosuaespinoza77@gmail.com.</p>
+</details></footer>
   </main>
 </div>
 
@@ -640,10 +707,12 @@ document.getElementById("btnNinguna").addEventListener("click",()=>{
   selProtos.clear(); syncProtoPanel(); renderMatriz();
 });
 
+let zonaFiltro="toda";
 function filasFiltradas(){
   const q=fBuscar.value.trim().toUpperCase(), mon=fMontaje.value, eg=fEstadoGral.value, ep=fEstadoProto.value;
   const cols=[...selProtos].sort((a,b)=>a-b);
   return DATA.matriz.filas.filter(f=>{
+    if(zonaFiltro!=="toda"){ const n=parseInt(f.torre.replace(/\D/g,""),10); if(zonaFiltro==="norte" && !(n>=1 && n<=236)) return false; if(zonaFiltro==="sur" && !(n>=237)) return false; }
     if(q && f.torre.toUpperCase().indexOf(q)===-1) return false;
     if(mon && f.montaje!==mon) return false;
     if(eg){ const info=torresInfo[f.torre]; if(!info || info.estado!==eg) return false; }
@@ -718,8 +787,20 @@ function renderMatriz(){
 [fBuscar,fMontaje,fEstadoGral,fEstadoProto].forEach(el=>{
   el.addEventListener("input",renderMatriz); el.addEventListener("change",renderMatriz);
 });
+function marcarZona(){
+  [["zonaToda","toda"],["zonaNorte","norte"],["zonaSur","sur"]].forEach(([id,z])=>{
+    const b=document.getElementById(id); if(!b) return;
+    const on=zonaFiltro===z;
+    b.style.background=on?"#0a2540":""; b.style.color=on?"#fff":""; b.style.borderColor=on?"#0a2540":"";
+  });
+}
+[["zonaToda","toda"],["zonaNorte","norte"],["zonaSur","sur"]].forEach(([id,z])=>{
+  const b=document.getElementById(id); if(b) b.addEventListener("click",()=>{ zonaFiltro=z; marcarZona(); renderMatriz(); });
+});
+marcarZona();
 document.getElementById("btnLimpiar").addEventListener("click",()=>{
   fBuscar.value=""; fMontaje.value=""; fEstadoGral.value=""; fEstadoProto.value="";
+  zonaFiltro="toda"; marcarZona();
   DATA.matriz.codigos.forEach((_,i)=>selProtos.add(i)); syncProtoPanel(); renderMatriz();
 });
 buildProtoPanel();
@@ -954,6 +1035,7 @@ function ensureDrawer(){
 }
 function chipEstado(ch){
   const e=EST[ch];
+  if(!e) return '<span class="chip-est" style="background:#FFFFFF">'+esc(ch)+'</span>';
   return '<span class="chip-est" style="background:'+e.color+'">'+e.nombre+'</span>';
 }
 function abrirFicha(torre, protoDestacado){
@@ -1457,6 +1539,24 @@ window.addEventListener("online", ()=>{
 
 /* render inicial de la matriz */
 renderMatriz();
+</script>
+<script>
+/* Lamp login prototipo LAT 1085 (2026-11-26): solo maqueta local.
+   No valida correos, no usa Firebase Auth, no guarda el correo.
+   Entrar solo oculta la puerta en esta pestaña (sessionStorage). */
+(function(){
+  var gate=document.getElementById('lampGate');
+  if(!gate) return;
+  try{ if(sessionStorage.getItem('lat1085_proto_ok')==='1'){ gate.style.display='none'; return; } }catch(e){}
+  var lamp=document.getElementById('lgLamp'),form=document.getElementById('lgForm');
+  var email=document.getElementById('lgEmail'),acepto=document.getElementById('lgAcepto'),btn=document.getElementById('lgEntrar'),skip=document.getElementById('lgSkip');
+  var on=false;
+  function validar(){ btn.disabled=!(on&&acepto.checked&&email.value.indexOf('@')>0); }
+  lamp.addEventListener('click',function(){ on=!on; lamp.classList.toggle('on',on); form.style.opacity=on?'1':'.35'; validar(); });
+  email.addEventListener('input',validar); acepto.addEventListener('change',validar);
+  function entrar(){ try{ sessionStorage.setItem('lat1085_proto_ok','1'); }catch(e){} gate.style.display='none'; }
+  btn.addEventListener('click',entrar); skip.addEventListener('click',entrar);
+})();
 </script>
 </body>
 </html>
